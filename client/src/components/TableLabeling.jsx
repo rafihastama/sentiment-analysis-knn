@@ -18,7 +18,7 @@ const items = [
   { key: '3', label: 'Netral' },
 ];
 
-function TableLabelingTraining({ data, itemsPerPage, title }) {
+function TableLabeling({ data, itemsPerPage, title }) {
     const [currentPage, setCurrentPage] = useState(0);
     const [selectedItems, setSelectedItems] = useState({});
 
@@ -187,4 +187,4 @@ function TableLabelingTraining({ data, itemsPerPage, title }) {
     );
 }
 
-export default TableLabelingTraining;
+export default TableLabeling;

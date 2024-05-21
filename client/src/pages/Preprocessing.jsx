@@ -1,11 +1,11 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from "react";
-import TablePreprocessingTrain from "../../components/TablePreprocessingTrain";
+import TablePreprocessingTrain from "../components/TablePreprocessingTrain";
 import { Button, Alert } from "antd";
 import { FileSyncOutlined } from "@ant-design/icons";
 import axios from "axios";
 
-const PreprocessingTraining = () => {
+const Preprocessing = () => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showSuccessAlert, setShowSuccessAlert] = useState(false);
@@ -80,10 +80,10 @@ const PreprocessingTraining = () => {
       <TablePreprocessingTrain
         data={data}
         itemsPerPage={5}
-        title={"Preprocessing Training"}
+        title={"Preprocessing"}
       />
     </div>
   );
 };
 
-export default PreprocessingTraining;
+export default Preprocessing;

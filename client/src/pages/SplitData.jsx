@@ -1,12 +1,11 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react'
-import { Button, message } from "antd";
+import { Button, message, Card, Row, Col } from "antd";
 import { SplitCellsOutlined } from "@ant-design/icons";
-import TableSplitData from '../../components/TableSplitData';
 import axios from "axios";
 
-function SplitDataTesting() {
-  const [data, setData] = useState([])
+function SplitData() {
+  const [data, setData] = useState({ training_count: 0, testing_count: 0})
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
@@ -15,7 +14,7 @@ function SplitDataTesting() {
 
   const getData = async() => {
     try {
-      const response = await axios.get("http://localhost:5000/get-data-testing")
+      const response = await axios.get("http://localhost:5000/get-both-data")
       setData(response.data)
     } catch (error) {
       console.error("Error Fetching Data", error)
@@ -41,7 +40,7 @@ function SplitDataTesting() {
 
   const handleDeleteExcel = () => {
     axios
-      .delete("http://localhost:5000/delete-all-test")
+      .delete("http://localhost:5000/delete-both")
       .then((response) => {
         if (response.status === 200) {
           setData([]);
@@ -78,9 +77,28 @@ function SplitDataTesting() {
         >
           Delete Record
         </Button>
-        <TableSplitData data={data} itemsPerPage={5} title={"Testing Data"} />
+        <Row gutter={16}>
+          <Col span={12}>
+            <center>
+              <Card title="Training Data">
+                <center>
+                  <h1>{data.training_count}</h1>
+                </center>
+              </Card>
+            </center>
+          </Col>
+          <Col span={12}>
+            <center>
+              <Card title="Testing Data">
+                <center>
+                  <h1>{data.testing_count}</h1>
+                </center>
+              </Card>
+            </center>
+          </Col>
+        </Row>
       </div>
     );
 }
 
-export default SplitDataTesting
+export default SplitData;

@@ -27,7 +27,7 @@ translator = GoogleTranslator(source='auto', target='en')
  
 app = Flask(__name__)
 cors = CORS(app, origins='*')
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root@localhost/data-training'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root@localhost/knn_sentiment'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
@@ -39,8 +39,14 @@ stopword_remover = stopword_factory.create_stop_word_remover()
 
 ignored_usernames = {'hariankompas', 'kompascom', 'kompastv', 'kompasbola', 'kompasmuda', 'kompasklasika', 'kompasdata'}
 
+class Kamus(db.Model):
+    __tablename__ = 'kamus'
+    id = db.Column(db.Integer, primary_key=True)
+    informal = db.Column(db.String(50))
+    formal = db.Column(db.String(50))
+
 class Tweet(db.Model):
-    __tablename__ = 'tweet-table'
+    __tablename__ = 'raw-tweet-table'
     id = db.Column(db.Integer, primary_key=True)
     created_at = db.Column(db.String(45))
     full_text = db.Column(db.String(800))
@@ -52,12 +58,20 @@ class Tweet(db.Model):
     tokenized_words = db.Column(db.String(1000))
     formal_text = db.Column(db.String(500))
     stopword_removal = db.Column(db.String(500))
-    
-class Kamus(db.Model):
-    __tablename__ = 'kamus'
+
+class TweetTraining(db.Model):
+    __tablename__ = 'tweet-table-training'
     id = db.Column(db.Integer, primary_key=True)
-    informal = db.Column(db.String(50))
-    formal = db.Column(db.String(50))
+    created_at = db.Column(db.String(45))
+    full_text = db.Column(db.String(800))
+    username = db.Column(db.String(45))
+    tweet_url = db.Column(db.String(100))
+    processed_text = db.Column(db.String(500))
+    sentiment = db.Column(db.DECIMAL(precision=5, scale=4))
+    cleaned_text = db.Column(db.String(500))
+    tokenized_words = db.Column(db.String(1000))
+    formal_text = db.Column(db.String(500))
+    stopword_removal = db.Column(db.String(500))
     
 class TweetTesting(db.Model):
     __tablename__ = 'tweet-table-testing'
@@ -121,15 +135,16 @@ def get_data():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     
-@app.route('/get-data-testing', methods=['GET'])
-def get_data_testing():
+@app.route('/get-both-data', methods=['GET'])
+def get_both_data():
     try:
-        tweets = TweetTesting.query.all()
-        data = [{'id': tweet.id, 'created_at': tweet.created_at, 'full_text': tweet.full_text, 
-                 'username': tweet.username, 'tweet_url': tweet.tweet_url, 'processed_text': tweet.processed_text, 
-                 'sentiment': tweet.sentiment, 'cleaned_text': tweet.cleaned_text, 'tokenized_words': tweet.tokenized_words, 
-                 'formal_text': tweet.formal_text, 'stopword_removal': tweet.stopword_removal} for tweet in tweets]
-        return jsonify(data)
+        training_count = TweetTraining.query.count()
+        testing_count = TweetTesting.query.count()
+        
+        return jsonify({
+            'training_count': training_count,
+            'testing_count': testing_count
+        }), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     
@@ -143,9 +158,10 @@ def delete_all_tweets():
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
     
-@app.route('/delete-all-test', methods=['DELETE'])
-def delete_all_tweets_test():
+@app.route('/delete-both', methods=['DELETE'])
+def delete_both():
     try:
+        db.session.query(TweetTraining).delete()
         db.session.query(TweetTesting).delete()
         db.session.commit()
         return jsonify({'message': 'All tweets deleted successfully!'}), 200
@@ -169,61 +185,6 @@ def preprocess_tweets():
             db.session.delete(tweet)
         
         tweets_to_process = Tweet.query.filter(~Tweet.username.in_(ignored_usernames)).all()
-        
-        # Variabel untuk menghitung ID tweet baru
-        new_tweet_id = 1
-        
-        for tweet in tweets_to_process:
-            # Cleaning
-            cleaned_text = re.sub(r'@[^\s]+', '', tweet.full_text)
-            cleaned_text = re.sub(r'[^a-zA-Z\s]', '', cleaned_text)
-            cleaned_text = re.sub(r'&amp;', '', cleaned_text)
-            cleaned_text = re.sub(r'\bamp\b', '', cleaned_text) 
-            cleaned_text = re.sub(r'http\S+', '', cleaned_text)
-            cleaned_text = cleaned_text.lower()
-            cleaned_text = re.sub(r'\s+', ' ', cleaned_text).strip()
-            tweet.cleaned_text = cleaned_text
-            
-            # Tokenization
-            tokenized_words = cleaned_text.split()
-            tokenized_text_with_separator = ', '.join(tokenized_words)
-            tweet.tokenized_words = tokenized_text_with_separator
-            
-            # Informal ke Formal
-            formal_words = [replace_informal_with_formal(word) for word in tokenized_words]
-            formal_text = ' '.join(formal_words)
-            tweet.formal_text = formal_text
-            
-            # Stopword Removal
-            stopword_removed_text = stopword_remover.remove(formal_text)
-            tweet.stopword_removal = stopword_removed_text
-            
-            # Stemming
-            stemmed_words = [stemmer.stem(word) for word in stopword_removed_text.split()]
-            stemmed_text = ' '.join(stemmed_words)
-            # translated_text = translator.translate(stemmed_text)
-            tweet.processed_text = stemmed_text
-            
-            # Set ulang ID tweet
-            tweet.id = new_tweet_id
-            new_tweet_id += 1
-        
-        db.session.commit()
-        
-        return jsonify({'message': 'Tweets processed successfully!'}), 200
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': str(e)}), 500
-    
-@app.route('/preprocess-tweets-testing', methods=['POST'])
-def preprocess_tweets_testing():
-    try:
-        tweets_to_delete = TweetTesting.query.filter(TweetTesting.username.in_(ignored_usernames)).all()
-        
-        for tweet in tweets_to_delete:
-            db.session.delete(tweet)
-        
-        tweets_to_process = TweetTesting.query.filter(~TweetTesting.username.in_(ignored_usernames)).all()
         
         # Variabel untuk menghitung ID tweet baru
         new_tweet_id = 1
@@ -293,51 +254,6 @@ def label_sentiment():
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
     
-@app.route('/label-sentiment-testing', methods=['POST'])
-def label_sentiment_testing():
-    try:
-        tweet_id = request.json['tweet_id']
-        sentiment_label = request.json['sentiment_label']
-        
-        tweet = TweetTesting.query.get(tweet_id)
-        if tweet:
-            if sentiment_label == 'Positif':
-                tweet.sentiment = 1
-            elif sentiment_label == 'Negatif':
-                tweet.sentiment = -1
-            else:
-                tweet.sentiment = 0
-            
-            db.session.commit()
-            return jsonify({'message': 'Sentiment labeled successfully!', 'sentiment': tweet.sentiment}), 200
-        else:
-            return jsonify({'error': 'Tweet not found!'}), 404
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': str(e)}), 500
-    
-# def calculate_sentiment_score(text):
-#     # Tokenisasi teks
-#     tokens = text.split()
-#     # Inisialisasi skor sentimen
-#     sentiment_score = 0
-#     # Jumlah token yang dihitung
-#     token_count = 0
-#     # Loop melalui setiap kata dalam teks
-#     for token in tokens:
-#         # Hitung skor sentimen dari kata menggunakan SentiWordNet
-#         synsets = list(swn.senti_synsets(token))
-#         if synsets:
-#             # Ambil hanya synset pertama
-#             synset = synsets[0]
-#             # Hitung skor sentimen
-#             sentiment_score += synset.pos_score() - synset.neg_score()
-#             token_count += 1
-#     # Hitung rata-rata skor sentimen
-#     if token_count > 0:
-#         sentiment_score /= token_count
-#     return sentiment_score
-    
 @app.route('/label-sentiment-automatically', methods=['POST'])
 def label_sentiment_automatically():
     try:
@@ -355,25 +271,6 @@ def label_sentiment_automatically():
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
-
-@app.route('/label-sentiment-automatically-testing', methods=['POST'])
-def label_sentiment_automatically_testing():
-    try:
-        tweets = TweetTesting.query.all()
-        for tweet in tweets:
-            sentiment_score = sid.polarity_scores(tweet.processed_text)['compound']
-            if sentiment_score >= 0.05:
-                tweet.sentiment = 1
-            elif sentiment_score <= -0.05:
-                tweet.sentiment = -1
-            else:
-                tweet.sentiment = 0
-        db.session.commit()
-        return jsonify({'message': 'Sentiment labeled automatically!'}), 200
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': str(e)}), 500
-    
     
 @app.route('/export-data', methods=['POST'])
 def export_data():
@@ -394,13 +291,76 @@ def export_data():
         return send_file(io.BytesIO(csv_data_bytes), as_attachment=True, download_name='exported_data.csv', mimetype='text/csv')
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    
+@app.route('/split-data', methods=['POST'])
+def split_data():
+    try:
+        # Ambil semua data dari database
+        all_tweets = Tweet.query.all()
+        
+        # Hitung jumlah data untuk masing-masing kategori sentimen
+        sentiments = [tweet.sentiment for tweet in all_tweets]
+        sentiment_counts = dict(Counter(sentiments))
+        
+        # Hitung jumlah data uji untuk masing-masing kategori sentimen berdasarkan persentase
+        test_size_neutral = int(sentiment_counts[0] * 0.2)
+        test_size_positive = int(sentiment_counts[1] * 0.2)
+        test_size_negative = int(sentiment_counts[-1] * 0.2)
+        
+        # Bagi data menjadi data latih dan data uji dengan split stratified sampling
+        train_data, test_data = [], []
+        for sentiment in [-1, 0, 1]:
+            sentiment_data = [tweet for tweet in all_tweets if tweet.sentiment == sentiment]
+            X_train, X_test = train_test_split(sentiment_data, test_size=test_size_neutral if sentiment == 0 else
+                                                                            test_size_positive if sentiment == 1 else
+                                                                            test_size_negative,
+                                               stratify=[tweet.sentiment for tweet in sentiment_data], random_state=42)
+            train_data.extend(X_train)
+            test_data.extend(X_test)
+        
+        # Simpan data uji ke dalam tabel TweetTesting
+        for tweet in test_data:
+            tweet_testing = TweetTesting(
+                created_at=tweet.created_at,
+                full_text=tweet.full_text,
+                username=tweet.username,
+                tweet_url=tweet.tweet_url,
+                processed_text=tweet.processed_text,
+                sentiment=tweet.sentiment,
+                cleaned_text=tweet.cleaned_text,
+                tokenized_words=tweet.tokenized_words,
+                formal_text=tweet.formal_text,
+                stopword_removal=tweet.stopword_removal
+            )
+            db.session.add(tweet_testing)
+            
+        for tweet in train_data:
+            tweet_training = TweetTraining(
+                created_at=tweet.created_at,
+                full_text=tweet.full_text,
+                username=tweet.username,
+                tweet_url=tweet.tweet_url,
+                processed_text=tweet.processed_text,
+                sentiment=tweet.sentiment,
+                cleaned_text=tweet.cleaned_text,
+                tokenized_words=tweet.tokenized_words,
+                formal_text=tweet.formal_text,
+                stopword_removal=tweet.stopword_removal
+            )
+            db.session.add(tweet_training)
+        
+        db.session.commit()
+        
+        return jsonify({'message': 'Data split successfully!'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
         
 @app.route('/get-sentiment-comparison', methods=['GET'])
 def get_sentiment_comparison():
     try:
-        positive_count = db.session.query(Tweet).filter(Tweet.sentiment >= 0.05).count()
-        negative_count = db.session.query(Tweet).filter(Tweet.sentiment <= -0.05).count()
-        neutral_count = db.session.query(Tweet).filter((Tweet.sentiment > -0.05) & (Tweet.sentiment < 0.05)).count()
+        positive_count = db.session.query(TweetTraining).filter(TweetTraining.sentiment >= 0.05).count()
+        negative_count = db.session.query(TweetTraining).filter(TweetTraining.sentiment <= -0.05).count()
+        neutral_count = db.session.query(TweetTraining).filter((TweetTraining.sentiment > -0.05) & (TweetTraining.sentiment < 0.05)).count()
         
         sentiment_data = [
             {'id': 0, 'value': neutral_count, 'label': 'Netral'},
@@ -432,9 +392,9 @@ def get_sentiment_comparison_testing():
 @app.route('/get-wordcloud-data', methods=['GET'])
 def get_wordcloud_data():
     try:    
-        tweets = Tweet.query.all()
-        positive_tweets = Tweet.query.filter(Tweet.sentiment >= 0.05).all()  # Positif
-        negative_tweets = Tweet.query.filter(Tweet.sentiment <= -0.05).all()  # Negatif
+        tweets = TweetTraining.query.all()
+        positive_tweets = TweetTraining.query.filter(TweetTraining.sentiment >= 0.05).all()  # Positif
+        negative_tweets = TweetTraining.query.filter(TweetTraining.sentiment <= -0.05).all()  # Negatif
         
         all_text = ' '.join([tweet.processed_text for tweet in tweets])
         positive_words = ' '.join([tweet.processed_text for tweet in positive_tweets])
@@ -578,7 +538,7 @@ def predict_sentiment_knn(all_tweets, tfidf_documents, k):
 @app.route('/predict-sentiment', methods=['POST'])
 def predict_sentiment_using_knn():
     try:
-        all_tweets = Tweet.query.all()
+        all_tweets = TweetTraining.query.all()
         documents = [tweet.processed_text for tweet in all_tweets]
         
         # TF-IDF
@@ -642,7 +602,7 @@ def predict_sentiment_using_knn_testing():
 @app.route('/calculate-accuracy', methods=['POST'])
 def calculate_accuracy():
     try:
-        all_tweets = Tweet.query.all()
+        all_tweets = TweetTraining.query.all()
         documents = [tweet.processed_text for tweet in all_tweets]
         
         tfidf_documents = calculate_tfidf(documents)
@@ -659,10 +619,33 @@ def calculate_accuracy():
         # Buat list sentimen prediksi berdasarkan mayoritas sentimen yang dihasilkan oleh KNN
         predicted_sentiments = [1] * positive_count + [-1] * negative_count + [0] * neutral_count
         
-        # Hitung metrik evaluasi
-        confusion_mat = confusion_matrix(actual_sentiments, predicted_sentiments, labels=[-1, 0, 1])
-        confusion_mat_list = confusion_mat.tolist()
+        # Hitung confusion matrix
+        confusion_mat = [[0, 0, 0], [0, 0, 0], [0, 0, 0]]  # Inisialisasi confusion matrix
         
+        for actual, predicted in zip(actual_sentiments, predicted_sentiments):
+            if actual == -1:
+                if predicted == -1:
+                    confusion_mat[0][0] += 1
+                elif predicted == 0:
+                    confusion_mat[0][1] += 1
+                else:
+                    confusion_mat[0][2] += 1
+            elif actual == 0:
+                if predicted == -1:
+                    confusion_mat[1][0] += 1
+                elif predicted == 0:
+                    confusion_mat[1][1] += 1
+                else:
+                    confusion_mat[1][2] += 1
+            else:
+                if predicted == -1:
+                    confusion_mat[2][0] += 1
+                elif predicted == 0:
+                    confusion_mat[2][1] += 1
+                else:
+                    confusion_mat[2][2] += 1
+                    
+        # Hitung metrik evaluasi
         precision, recall, f1_score, _ = precision_recall_fscore_support(actual_sentiments, predicted_sentiments, labels=[-1, 0, 1], average='weighted')
         
         precision_percent = precision * 100
@@ -675,7 +658,7 @@ def calculate_accuracy():
         accuracy = correct_predictions / total_predictions * 100
         
         return jsonify({
-            'confusion_matrix': confusion_mat_list,
+            'confusion_matrix': confusion_mat,
             'precision': precision_percent,
             'recall': recall_percent,
             'f1_score': f1_score_percent,
@@ -705,8 +688,30 @@ def calculate_accuracy_testing():
         predicted_sentiments = [1] * positive_count + [-1] * negative_count + [0] * neutral_count
         
         # Hitung metrik evaluasi
-        confusion_mat = confusion_matrix(actual_sentiments, predicted_sentiments, labels=[-1, 0, 1])
-        confusion_mat_list = confusion_mat.tolist()
+        confusion_mat = [[0, 0, 0], [0, 0, 0], [0, 0, 0]]  # Inisialisasi confusion matrix
+        
+        for actual, predicted in zip(actual_sentiments, predicted_sentiments):
+            if actual == -1:
+                if predicted == -1:
+                    confusion_mat[0][0] += 1
+                elif predicted == 0:
+                    confusion_mat[0][1] += 1
+                else:
+                    confusion_mat[0][2] += 1
+            elif actual == 0:
+                if predicted == -1:
+                    confusion_mat[1][0] += 1
+                elif predicted == 0:
+                    confusion_mat[1][1] += 1
+                else:
+                    confusion_mat[1][2] += 1
+            else:
+                if predicted == -1:
+                    confusion_mat[2][0] += 1
+                elif predicted == 0:
+                    confusion_mat[2][1] += 1
+                else:
+                    confusion_mat[2][2] += 1
         
         precision, recall, f1_score, _ = precision_recall_fscore_support(actual_sentiments, predicted_sentiments, labels=[-1, 0, 1], average='weighted')
         
@@ -720,7 +725,7 @@ def calculate_accuracy_testing():
         accuracy = correct_predictions / total_predictions * 100
         
         return jsonify({
-            'confusion_matrix': confusion_mat_list,
+            'confusion_matrix': confusion_mat,
             'precision': precision_percent,
             'recall': recall_percent,
             'f1_score': f1_score_percent,
@@ -728,54 +733,6 @@ def calculate_accuracy_testing():
         }), 200
     except Exception as e:
         return jsonify({'error': 'An error occurred during accuracy calculation: {}'.format(str(e))}), 500
-    
-@app.route('/split-data', methods=['POST'])
-def split_data():
-    try:
-        # Ambil semua data dari database
-        all_tweets = Tweet.query.all()
-        
-        # Hitung jumlah data untuk masing-masing kategori sentimen
-        sentiments = [tweet.sentiment for tweet in all_tweets]
-        sentiment_counts = dict(Counter(sentiments))
-        
-        # Hitung jumlah data uji untuk masing-masing kategori sentimen berdasarkan persentase
-        test_size_neutral = int(sentiment_counts[0] * 0.2)
-        test_size_positive = int(sentiment_counts[1] * 0.2)
-        test_size_negative = int(sentiment_counts[-1] * 0.2)
-        
-        # Bagi data menjadi data latih dan data uji dengan split stratified sampling
-        train_data, test_data = [], []
-        for sentiment in [-1, 0, 1]:
-            sentiment_data = [tweet for tweet in all_tweets if tweet.sentiment == sentiment]
-            X_train, X_test = train_test_split(sentiment_data, test_size=test_size_neutral if sentiment == 0 else
-                                                                            test_size_positive if sentiment == 1 else
-                                                                            test_size_negative,
-                                               stratify=[tweet.sentiment for tweet in sentiment_data], random_state=42)
-            train_data.extend(X_train)
-            test_data.extend(X_test)
-        
-        # Simpan data uji ke dalam tabel TweetTesting
-        for tweet in test_data:
-            tweet_testing = TweetTesting(
-                created_at=tweet.created_at,
-                full_text=tweet.full_text,
-                username=tweet.username,
-                tweet_url=tweet.tweet_url,
-                processed_text=tweet.processed_text,
-                sentiment=tweet.sentiment,
-                cleaned_text=tweet.cleaned_text,
-                tokenized_words=tweet.tokenized_words,
-                formal_text=tweet.formal_text,
-                stopword_removal=tweet.stopword_removal
-            )
-            db.session.add(tweet_testing)
-        
-        db.session.commit()
-        
-        return jsonify({'message': 'Data split successfully!'}), 200
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)

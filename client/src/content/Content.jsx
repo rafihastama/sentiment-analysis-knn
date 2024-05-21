@@ -6,20 +6,13 @@ import { Container } from "reactstrap";
 import { Route, Routes } from "react-router-dom";
 
 import Topbar from "../components/Topbar";
-import ImportData from "../pages/training/ImportData";
-import LabelingTraining from "../pages/training/LabelingTraining";
-import PreprocessingTraining from "../pages/training/PreprocessingTraining";
-import AnalysisTraining from "../pages/training/AnalysisTraining";
-import TFIDFTraining from "../pages/training/TFIDFTraining";
-import ModelingTraining from "../pages/training/ModelingTraining";
-import EvaluateTraining from "../pages/training/EvaluateTraining";
-
-import SplitDataTesting from "../pages/testing/SplitDataTesting";
-import PreprocessingTesting from "../pages/testing/PreprocessingTesting";
-import LabelingTesting from "../pages/testing/LabelingTesting";
-import AnalysisTesting from "../pages/testing/AnalysisTesting";
-import ModelingTesting from "../pages/testing/ModelingTesting";
-import EvaluateTesting from "../pages/testing/EvaluateTesting";
+import ImportData from "../pages/ImportData";
+import Preprocessing from "../pages/Preprocessing";
+import Labeling from "../pages/Labeling";
+import Analysis from "../pages/Analysis";
+import SplitData from "../pages/SplitData";
+import Modeling from "../pages/Modeling";
+import Evaluate from "../pages/Evaluate";
 
 function Content({ sidebarIsOpen, toggleSidebar }) {
     return (
@@ -30,19 +23,12 @@ function Content({ sidebarIsOpen, toggleSidebar }) {
         <Topbar toggleSidebar={toggleSidebar} />
         <Routes>
           <Route path="/" element={<ImportData />} />
-          <Route path="/preprocessing-train" element={<PreprocessingTraining />} />
-          <Route path="/labeling-train" element={<LabelingTraining />} />
-          <Route path="/analysis-train" element={<AnalysisTraining />} />
-          {/* <Route path="/tf-idf-train" element={<TFIDFTraining />} /> */}
-          <Route path="/modeling-train" element={<ModelingTraining />} />
-          <Route path="/evaluate-train" element={<EvaluateTraining />} />
-
-          <Route path="/split-data-test" element={<SplitDataTesting />} />
-          <Route path="/preprocessing-test" element={<PreprocessingTesting />} />
-          <Route path="/labeling-test" element={<LabelingTesting />} />
-          <Route path="/analysis-test" element={<AnalysisTesting />} />
-          <Route path="/modeling-test" element={<ModelingTesting />} />
-          <Route path="/evaluate-test" element={<EvaluateTesting />} />
+          <Route path="/preprocessing" element={<Preprocessing />} />
+          <Route path="/labeling" element={<Labeling />} />
+          <Route path="/split-data" element={<SplitData />} />
+          <Route path="/analysis" element={<Analysis />} />
+          <Route path="/modeling" element={<Modeling />} />
+          <Route path="/evaluate" element={<Evaluate />} />
         </Routes>
       </Container>
     );

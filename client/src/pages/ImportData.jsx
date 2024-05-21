@@ -1,6 +1,6 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from "react";
-import TableImport from "../../components/TableImport";
+import TableImport from "../components/TableImport";
 import { Button, Alert, message } from "antd";
 import axios from "axios";
 

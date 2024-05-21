@@ -1,14 +1,14 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from "react";
-import TableLabelingTraining from "../../components/TableLabelingTraining";
+import TableLabeling from "../components/TableLabeling";
 import { Button, message } from "antd";
 import { ExportOutlined } from "@ant-design/icons";
 import { DeliveredProcedureOutlined } from "@ant-design/icons";
 import axios from "axios";
 
-const LabelingTraining = () => {
+const Labeling = () => {
   const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     getData();
@@ -44,7 +44,7 @@ const LabelingTraining = () => {
 
   const labelSentimentAutomatically = async () => {
     try {
-      setLoading(true)
+      setLoading(true);
       const response = await axios.post(
         "http://localhost:5000/label-sentiment-automatically"
       );
@@ -55,7 +55,7 @@ const LabelingTraining = () => {
       console.error("Error labeling sentiment automatically:", error);
       message.error("Failed to label sentiment automatically!");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   };
 
@@ -78,9 +78,9 @@ const LabelingTraining = () => {
       >
         Label Sentiment Automatically
       </Button>
-      <TableLabelingTraining data={data} itemsPerPage={12} title={"Labeling Training"} />
+      <TableLabeling data={data} itemsPerPage={12} title={"Labeling"} />
     </div>
   );
 };
 
-export default LabelingTraining;
+export default Labeling;

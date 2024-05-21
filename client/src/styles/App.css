@@ -93,6 +93,12 @@ li a.dropdown-toggle::after {
   display: none;
 }
 
+.sidebar .nav-link.active {
+  color: #1890ff;
+  font-weight: bold;
+  text-shadow: 0 0 5px rgba(24, 144, 255, 0.5);
+}
+
 .side-menu {
   height: 290px;
   margin: 10px;
