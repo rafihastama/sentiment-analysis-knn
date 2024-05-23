@@ -17,13 +17,9 @@ from sklearn import metrics
 import numpy as np
 import nltk
 from nltk.sentiment import SentimentIntensityAnalyzer
-from nltk.corpus import sentiwordnet as swn
-from deep_translator import GoogleTranslator
 
 nltk.download('vader_lexicon')
 sid = SentimentIntensityAnalyzer()
-
-translator = GoogleTranslator(source='auto', target='en')
  
 app = Flask(__name__)
 cors = CORS(app, origins='*')
@@ -217,7 +213,6 @@ def preprocess_tweets():
             # Stemming
             stemmed_words = [stemmer.stem(word) for word in stopword_removed_text.split()]
             stemmed_text = ' '.join(stemmed_words)
-            # translated_text = translator.translate(stemmed_text)
             tweet.processed_text = stemmed_text
             
             # Set ulang ID tweet

@@ -1,5 +1,5 @@
 /* eslint-disable no-unused-vars */
-import { useState } from 'react'
+import React, { useState } from 'react'
 import './styles/App.css'
 import SideBar from './components/Sidebar'
 import Content from './content/Content'
@@ -12,7 +12,7 @@ import "bootstrap/dist/js/bootstrap.bundle.min";
 
 function App() {
   const [sidebarIsOpen, setSidebarOpen] = useState(true);
-  const toggleSidebar = () => setSidebarOpen(!sidebarIsOpen)
+  const toggleSidebar = () => setSidebarOpen(!sidebarIsOpen);
 
   return (
     <>

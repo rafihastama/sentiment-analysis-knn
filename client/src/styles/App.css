@@ -69,6 +69,7 @@ a:focus {
   color: #000000;
   background: #1f2c68;
   transition: all 0.3s;
+  border-radius: 15px;
 }
 
 .items-menu {

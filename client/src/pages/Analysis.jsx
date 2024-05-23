@@ -62,23 +62,23 @@ function Analysis() {
     }
   };
 
-    const countSentiments = () => {
-      let positiveCount = 0;
-      let negativeCount = 0;
-      let neutralCount = 0;
-      sentimentDataTraining.forEach((item) => {
-        if (item.label === "Positif") {
-          positiveCount += item.value;
-        } else if (item.label === "Negatif") {
-          negativeCount += item.value;
-        } else {
-          neutralCount += item.value;
-        }
-      });
-      return { positiveCount, negativeCount, neutralCount };
-    };
+    // const countSentiments = () => {
+    //   let positiveCount = 0;
+    //   let negativeCount = 0;
+    //   let neutralCount = 0;
+    //   sentimentDataTraining.forEach((item) => {
+    //     if (item.label === "Positif") {
+    //       positiveCount += item.value;
+    //     } else if (item.label === "Negatif") {
+    //       negativeCount += item.value;
+    //     } else {
+    //       neutralCount += item.value;
+    //     }
+    //   });
+    //   return { positiveCount, negativeCount, neutralCount };
+    // };
 
-    const { positiveCount, negativeCount, neutralCount } = countSentiments();
+    // const { positiveCount, negativeCount, neutralCount } = countSentiments();
 
   return (
     <>
