@@ -63,7 +63,7 @@ function TableImport({ data, itemsPerPage, title }) {
                   <thead className="text-primary">
                     <tr>
                       <th>No</th>
-                      <th>created_at</th>
+                      <th>Created</th>
                       <th>Username</th>
                       <th>Full Text</th>
                       <th>Tweet URL</th>

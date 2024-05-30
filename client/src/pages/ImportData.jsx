@@ -1,11 +1,12 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from "react";
 import TableImport from "../components/TableImport";
-import { Button, Alert, message } from "antd";
+import { UploadOutlined } from '@ant-design/icons';
+import { Button, Alert, message, Upload } from "antd";
 import axios from "axios";
 
 const ImportData = () => {
-  const [selectedFile, setSelectedFile] = useState(null);
+  const [fileList, setFileList] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [data, setData] = useState([]);
   const [showSuccessAlert, setShowSuccessAlert] = useState(false);
@@ -24,13 +25,11 @@ const ImportData = () => {
     }
   };
 
-  const handleFileChange = (event) => {
-    setSelectedFile(event.target.files[0]);
-  };
-
-  const handleImportExcel = () => {
+  const handleUpload = () => {
     const formData = new FormData();
-    formData.append("file", selectedFile);
+    fileList.forEach((file) => {
+      formData.append('file', file);
+    })
     setUploading(true);
     axios
       .post("http://localhost:5000/import-excel", formData)
@@ -68,6 +67,22 @@ const ImportData = () => {
       });
   };
 
+  const uploadProps = {
+    onRemove: (file) => {
+      setFileList((prevFileList) => {
+        const index = prevFileList.indexOf(file);
+        const newFileList = prevFileList.slice();
+        newFileList.splice(index, 1);
+        return newFileList;
+      });
+    },
+    beforeUpload: (file) => {
+      setFileList((prevFileList) => [...prevFileList, file]);
+      return false;
+    },
+    fileList,
+  };
+
   return (
     <div>
       {showSuccessAlert && (
@@ -92,14 +107,12 @@ const ImportData = () => {
           onClose={() => setShowWarningAlert(false)}
         />
       )}
-      <input
-        type="file"
-        onChange={handleFileChange}
-        style={{ color: "white" }}
-      />
+      <Upload {...uploadProps} className="custom-upload-list">
+        <Button icon={<UploadOutlined />}>Select File</Button>
+      </Upload>
       <Button
         type="primary"
-        onClick={handleImportExcel}
+        onClick={handleUpload}
         loading={uploading}
         style={{
           marginTop: 16,
