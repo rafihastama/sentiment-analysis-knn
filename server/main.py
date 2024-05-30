@@ -48,6 +48,14 @@ class Tweet(db.Model):
     full_text = db.Column(db.String(800))
     username = db.Column(db.String(45))
     tweet_url = db.Column(db.String(100))
+    
+class ProcessedTweet(db.Model):
+    __tablename__ = 'processed-tweet-table'
+    id = db.Column(db.Integer, primary_key=True)
+    created_at = db.Column(db.String(45))
+    full_text = db.Column(db.String(800))
+    username = db.Column(db.String(45))
+    tweet_url = db.Column(db.String(100))
     processed_text = db.Column(db.String(500))
     sentiment = db.Column(db.DECIMAL(precision=5, scale=4))
     cleaned_text = db.Column(db.String(500))
@@ -111,6 +119,9 @@ def import_excel():
             for index, row in df.iterrows():
                 tweet = Tweet(created_at=row['created_at'], full_text=row['full_text'], username=row['username'], tweet_url=row['tweet_url'])
                 db.session.add(tweet)
+                
+                processed_tweet = ProcessedTweet(created_at=row['created_at'], full_text=row['full_text'], username=row['username'], tweet_url=row['tweet_url'])
+                db.session.add(processed_tweet)
             db.session.commit()
             return jsonify({'message': 'Excel imported successfully!'}), 200
         except Exception as e:
@@ -123,6 +134,16 @@ def import_excel():
 def get_data():
     try:
         tweets = Tweet.query.all()
+        data = [{'id': tweet.id, 'created_at': tweet.created_at, 'full_text': tweet.full_text, 
+                 'username': tweet.username, 'tweet_url': tweet.tweet_url} for tweet in tweets]
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    
+@app.route('/get-processed-data', methods=['GET'])
+def get_processed_data():
+    try:
+        tweets = ProcessedTweet.query.all()
         data = [{'id': tweet.id, 'created_at': tweet.created_at, 'full_text': tweet.full_text, 
                  'username': tweet.username, 'tweet_url': tweet.tweet_url, 'processed_text': tweet.processed_text, 
                  'sentiment': tweet.sentiment, 'cleaned_text': tweet.cleaned_text, 'tokenized_words': tweet.tokenized_words, 
@@ -148,6 +169,7 @@ def get_both_data():
 def delete_all_tweets():
     try:
         db.session.query(Tweet).delete()
+        db.session.query(ProcessedTweet).delete()
         db.session.commit()
         return jsonify({'message': 'All tweets deleted successfully!'}), 200
     except Exception as e:
@@ -175,12 +197,12 @@ def replace_informal_with_formal(word):
 @app.route('/preprocess-tweets', methods=['POST'])
 def preprocess_tweets():
     try:
-        tweets_to_delete = Tweet.query.filter(Tweet.username.in_(ignored_usernames)).all()
+        tweets_to_delete = ProcessedTweet.query.filter(ProcessedTweet.username.in_(ignored_usernames)).all()
         
         for tweet in tweets_to_delete:
             db.session.delete(tweet)
         
-        tweets_to_process = Tweet.query.filter(~Tweet.username.in_(ignored_usernames)).all()
+        tweets_to_process = ProcessedTweet.query.filter(~ProcessedTweet.username.in_(ignored_usernames)).all()
         
         # Variabel untuk menghitung ID tweet baru
         new_tweet_id = 1
@@ -232,7 +254,7 @@ def label_sentiment():
         tweet_id = request.json['tweet_id']
         sentiment_label = request.json['sentiment_label']
         
-        tweet = Tweet.query.get(tweet_id)
+        tweet = ProcessedTweet.query.get(tweet_id)
         if tweet:
             if sentiment_label == 'Positif':
                 tweet.sentiment = 1
@@ -252,7 +274,7 @@ def label_sentiment():
 @app.route('/label-sentiment-automatically', methods=['POST'])
 def label_sentiment_automatically():
     try:
-        tweets = Tweet.query.all()
+        tweets = ProcessedTweet.query.all()
         for tweet in tweets:
             sentiment_score = sid.polarity_scores(tweet.processed_text)['compound']
             if sentiment_score >= 0.05:
@@ -270,7 +292,7 @@ def label_sentiment_automatically():
 @app.route('/export-data', methods=['POST'])
 def export_data():
     try:
-        tweets = Tweet.query.all()
+        tweets = ProcessedTweet.query.all()
         data = [
             {'id': tweet.id, 'username': tweet.username, 'full_text': tweet.full_text, 'processed_text': tweet.processed_text, 'sentiment': tweet.sentiment, 'label_sentiment': 'Netral' if tweet.sentiment == 0 else 'Negatif' if tweet.sentiment == -1 else 'Positif' if tweet.sentiment == 1 else ''}
             for tweet in tweets
@@ -291,7 +313,7 @@ def export_data():
 def split_data():
     try:
         # Ambil semua data dari database
-        all_tweets = Tweet.query.all()
+        all_tweets = ProcessedTweet.query.all()
         
         # Hitung jumlah data untuk masing-masing kategori sentimen
         sentiments = [tweet.sentiment for tweet in all_tweets]
@@ -510,25 +532,6 @@ def predict_sentiment_knn(all_tweets, tfidf_documents, k):
     neutral_count = list(sentiments.values()).count(0)
     
     return positive_count, negative_count, neutral_count
-
-# @app.route('/tf-idf', methods=['POST'])
-# def calculate_tfidf():
-#     try:
-#         documents = [tweet.processed_text for tweet in Tweet.query.all()]
-        
-#         tfidf_vectorizer = TfidfVectorizer()
-        
-#         tfidf_matrix = tfidf_vectorizer.fit_transform(documents)
-        
-#         features = tfidf_vectorizer.get_feature_names_out()
-        
-#         tfidf_values = tfidf_matrix.toarray()
-        
-#         tfidf_data = [{'word': word, 'tfidf_values': tfidf_values[:, idx].tolist()} for idx, word in enumerate(features)]
-        
-#         return jsonify({'tfidf_data': tfidf_data}), 200
-#     except Exception as e:
-#         return jsonify({'error': str(e)}), 500
 
 @app.route('/predict-sentiment', methods=['POST'])
 def predict_sentiment_using_knn():

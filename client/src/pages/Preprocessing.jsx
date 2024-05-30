@@ -6,19 +6,19 @@ import { FileSyncOutlined } from "@ant-design/icons";
 import axios from "axios";
 
 const Preprocessing = () => {
-  const [data, setData] = useState([]);
+  const [processedData, setProcessedData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showSuccessAlert, setShowSuccessAlert] = useState(false);
   const [showWarningAlert, setShowWarningAlert] = useState(false);
 
   useEffect(() => {
-    getData();
+    getProcessedData();
   }, []);
 
-  const getData = async () => {
+  const getProcessedData = async () => {
     try {
-      const response = await axios.get("http://localhost:5000/get-data");
-      setData(response.data);
+      const response = await axios.get("http://localhost:5000/get-processed-data");
+      setProcessedData(response.data);
     } catch (error) {
       console.error("Error fetching data:", error);
     }
@@ -31,7 +31,7 @@ const Preprocessing = () => {
         "http://localhost:5000/preprocess-tweets"
       );
       if (response.status === 200) {
-        getData();
+        getProcessedData();
         setShowSuccessAlert(true);
       } else {
         setShowWarningAlert(true);
@@ -78,7 +78,7 @@ const Preprocessing = () => {
         Process
       </Button>
       <TablePreprocessingTrain
-        data={data}
+        data={processedData}
         itemsPerPage={5}
         title={"Preprocessing"}
       />

@@ -29,7 +29,7 @@ function TableLabeling({ data, itemsPerPage, title }) {
     useEffect(() => {
       const fetchSentiments = async () => {
         try {
-          const response = await axios.get('http://localhost:5000/get-data');
+          const response = await axios.get('http://localhost:5000/get-processed-data');
           const tweets = response.data;
           const updatedSelectedItems = {};
           tweets.forEach(tweet => {
