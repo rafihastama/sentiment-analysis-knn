@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, request, jsonify, send_file, make_response
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 import csv
@@ -10,10 +10,7 @@ from Sastrawi.StopWordRemover.StopWordRemoverFactory import StopWordRemoverFacto
 import pandas as pd
 from collections import Counter
 import math
-import traceback
-from sklearn.metrics import confusion_matrix, precision_recall_fscore_support, precision_score, accuracy_score
 from sklearn.model_selection import train_test_split
-from sklearn import metrics
 import numpy as np
 import nltk
 from nltk.sentiment import SentimentIntensityAnalyzer
@@ -33,7 +30,7 @@ stemmer = factory.create_stemmer()
 stopword_factory = StopWordRemoverFactory()
 stopword_remover = stopword_factory.create_stop_word_remover()
 
-ignored_usernames = {'hariankompas', 'kompascom', 'kompastv', 'kompasbola', 'kompasmuda', 'kompasklasika', 'kompasdata'}
+ignored_usernames = {'hariankompas', 'kompascom', 'kompastv', 'kompasbola', 'kompasmuda', 'kompasklasika', 'kompasdata', 'kompastvjatim'}
 
 class Kamus(db.Model):
     __tablename__ = 'kamus'
@@ -71,7 +68,7 @@ class TweetTraining(db.Model):
     username = db.Column(db.String(45))
     tweet_url = db.Column(db.String(100))
     processed_text = db.Column(db.String(500))
-    sentiment = db.Column(db.DECIMAL(precision=5, scale=4))
+    sentiment = db.Column(db.Integer)
     cleaned_text = db.Column(db.String(500))
     tokenized_words = db.Column(db.String(1000))
     formal_text = db.Column(db.String(500))
@@ -85,7 +82,7 @@ class TweetTesting(db.Model):
     username = db.Column(db.String(45))
     tweet_url = db.Column(db.String(100))
     processed_text = db.Column(db.String(500))
-    sentiment = db.Column(db.DECIMAL(precision=5, scale=4))
+    sentiment = db.Column(db.Integer)
     cleaned_text = db.Column(db.String(500))
     tokenized_words = db.Column(db.String(1000))
     formal_text = db.Column(db.String(500))
@@ -176,12 +173,44 @@ def delete_all_tweets():
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
     
+@app.route('/delete-processed-tweets', methods=['DELETE'])
+def delete_processed_tweets():
+    try:
+        processed_tweets = db.session.query(ProcessedTweet).all()
+        for tweet in processed_tweets:
+            tweet.processed_text = None
+            tweet.sentiment = None
+            tweet.cleaned_text = None
+            tweet.tokenized_words = None
+            tweet.formal_text = None
+            tweet.stopword_removal = None
+        
+        db.session.commit()
+        
+        updated_tweets = db.session.query(ProcessedTweet).all()
+        updated_tweets_data = [
+            {
+                'id': tweet.id,
+                'created_at': tweet.created_at,
+                'username': tweet.username,
+                'full_text': tweet.full_text,
+                'tweet_url': tweet.tweet_url
+            } for tweet in updated_tweets
+        ]
+        
+        return jsonify(updated_tweets_data), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+    
 @app.route('/delete-both', methods=['DELETE'])
 def delete_both():
     try:
-        db.session.query(TweetTraining).delete()
-        db.session.query(TweetTesting).delete()
+        training_deleted = db.session.query(TweetTraining).delete()
+        testing_deleted = db.session.query(TweetTesting).delete()
         db.session.commit()
+        if training_deleted == 0 and testing_deleted == 0:
+            return jsonify({'message': 'No data to delete!'}), 204
         return jsonify({'message': 'All tweets deleted successfully!'}), 200
     except Exception as e:
         db.session.rollback()
@@ -208,13 +237,14 @@ def preprocess_tweets():
         new_tweet_id = 1
         
         for tweet in tweets_to_process:
-            # Cleaning
-            cleaned_text = re.sub(r'@[^\s]+', '', tweet.full_text)
-            cleaned_text = re.sub(r'[^a-zA-Z\s]', '', cleaned_text)
-            cleaned_text = re.sub(r'&amp;', '', cleaned_text)
-            cleaned_text = re.sub(r'\bamp\b', '', cleaned_text) 
+            # Cleansing
+            cleaned_text = tweet.full_text.lower()
+            cleaned_text = re.sub(r'@[^\s]+', '', cleaned_text)
+            cleaned_text = re.sub(r'#[^\s]+', '', cleaned_text)
             cleaned_text = re.sub(r'http\S+', '', cleaned_text)
-            cleaned_text = cleaned_text.lower()
+            cleaned_text = re.sub(r'[^a-zA-Z\s]', '', cleaned_text)
+            cleaned_text = re.sub(r'&amp;', ' ', cleaned_text)
+            cleaned_text = re.sub(r'\bamp\b', '', cleaned_text)
             cleaned_text = re.sub(r'\s+', ' ', cleaned_text).strip()
             tweet.cleaned_text = cleaned_text
             
@@ -375,9 +405,9 @@ def split_data():
 @app.route('/get-sentiment-comparison', methods=['GET'])
 def get_sentiment_comparison():
     try:
-        positive_count = db.session.query(TweetTraining).filter(TweetTraining.sentiment >= 0.05).count()
-        negative_count = db.session.query(TweetTraining).filter(TweetTraining.sentiment <= -0.05).count()
-        neutral_count = db.session.query(TweetTraining).filter((TweetTraining.sentiment > -0.05) & (TweetTraining.sentiment < 0.05)).count()
+        positive_count = db.session.query(TweetTraining).filter(TweetTraining.sentiment == 1).count()
+        negative_count = db.session.query(TweetTraining).filter(TweetTraining.sentiment == 1).count()
+        neutral_count = db.session.query(TweetTraining).filter(TweetTraining.sentiment == 0).count()
         
         sentiment_data = [
             {'id': 0, 'value': neutral_count, 'label': 'Netral'},
@@ -392,9 +422,9 @@ def get_sentiment_comparison():
 @app.route('/get-sentiment-comparison-testing', methods=['GET'])
 def get_sentiment_comparison_testing():
     try:
-        positive_count = db.session.query(TweetTesting).filter(TweetTesting.sentiment >= 0.05).count()
-        negative_count = db.session.query(TweetTesting).filter(TweetTesting.sentiment <= -0.05).count()
-        neutral_count = db.session.query(TweetTesting).filter((TweetTesting.sentiment > -0.05) & (TweetTesting.sentiment < 0.05)).count()
+        positive_count = db.session.query(TweetTesting).filter(TweetTesting.sentiment == 1).count()
+        negative_count = db.session.query(TweetTesting).filter(TweetTesting.sentiment == -1).count()
+        neutral_count = db.session.query(TweetTesting).filter(TweetTesting.sentiment == 0).count()
         
         sentiment_data = [
             {'id': 0, 'value': neutral_count, 'label': 'Netral'},
@@ -410,8 +440,8 @@ def get_sentiment_comparison_testing():
 def get_wordcloud_data():
     try:    
         tweets = TweetTraining.query.all()
-        positive_tweets = TweetTraining.query.filter(TweetTraining.sentiment >= 0.05).all()  # Positif
-        negative_tweets = TweetTraining.query.filter(TweetTraining.sentiment <= -0.05).all()  # Negatif
+        positive_tweets = TweetTraining.query.filter(TweetTraining.sentiment == 1).all()  # Positif
+        negative_tweets = TweetTraining.query.filter(TweetTraining.sentiment == -1).all()  # Negatif
         
         all_text = ' '.join([tweet.processed_text for tweet in tweets])
         positive_words = ' '.join([tweet.processed_text for tweet in positive_tweets])
@@ -433,8 +463,8 @@ def get_wordcloud_data():
 def get_wordcloud_data_testing():
     try:    
         tweets = TweetTesting.query.all()
-        positive_tweets = TweetTesting.query.filter(TweetTesting.sentiment >= 0.05).all()  # Positif
-        negative_tweets = TweetTesting.query.filter(TweetTesting.sentiment <= -0.05).all()  # Negatif
+        positive_tweets = TweetTesting.query.filter(TweetTesting.sentiment == 1).all()  # Positif
+        negative_tweets = TweetTesting.query.filter(TweetTesting.sentiment == -1).all()  # Negatif
         
         all_text = ' '.join([tweet.processed_text for tweet in tweets])
         positive_words = ' '.join([tweet.processed_text for tweet in positive_tweets])
@@ -458,20 +488,34 @@ def euclidean_distance(vector1, vector2):
 
 def calculate_tf(document):
     tf_document = {}
-    total_words = len(document)
-    for word in document:
-        tf_document[word] = tf_document.get(word, 0) + 1 / total_words
+    words = document.split()
+    
+    # Hitung frekuensi kemunculan setiap kata dalam dokumen
+    word_counts = {}
+    for word in words:
+        word_counts[word] = word_counts.get(word, 0) + 1
+    
+    total_words = len(words)
+    
+    for word, count in word_counts.items():
+        tf_document[word] = count / total_words
+    
+    # print("Hasil perhitungan TF untuk dokumen:")
+    # for word, tf_val in tf_document.items():
+    #     print(f"Kata: {word}, Nilai TF: {tf_val}")
+    
     return tf_document
 
 def calculate_idf(documents):
     idf = {}
     total_documents = len(documents)
-    for document in documents:
-        unique_words = set(document)
-        for word in unique_words:
-            idf[word] = idf.get(word, 0) + 1
-    for word, val in idf.items():
-        idf[word] = math.log(total_documents / val)
+    unique_words_set = set(word for document in documents for word in document.split())
+    for word in unique_words_set:
+        word_count = sum(word in document for document in documents)
+        idf[word] = math.log(total_documents / word_count)
+    # print("Hasil perhitungan IDF:")
+    # for word, idf_val in idf.items():
+    #     print(f"Kata: {word}, Nilai IDF: {idf_val}")
     return idf
     
 def calculate_tfidf(documents):
@@ -486,12 +530,99 @@ def calculate_tfidf(documents):
         tf_document = calculate_tf(document)
         for word, tf_val in tf_document.items():
             if word in idf:  # Pastikan kata ada dalam idf
-                tfidf_document[word_index[word]] = tf_val * idf[word]  # Isi nilai TF-IDF
+                tfidf_val = tf_val * idf[word]  # Hitung nilai TF-IDF
+                # print(f"Kata: {word}, Nilai TF: {tf_val} dikali Nilai IDF: {idf[word]} = Hasil TF-IDF: {tfidf_val}")
+                tfidf_document[word_index[word]] = tfidf_val  # Isi nilai TF-IDF
         tfidf_documents.append(tfidf_document)
     return tfidf_documents
 
+@app.route('/export-tf', methods=['POST'])
+def export_tf():
+    try:
+        all_tweets = TweetTraining.query.all()
+        documents = [tweet.processed_text for tweet in all_tweets]
+        
+        # Hitung TF untuk setiap dokumen
+        all_tf_documents = [calculate_tf(doc) for doc in documents]
+        
+        # Menyiapkan CSV
+        output = io.StringIO()
+        writer = csv.writer(output)
+        
+        # Tulis header
+        header = ["document_id", "word", "tf"]
+        writer.writerow(header)
+        
+        # Tulis setiap TF ke CSV
+        for doc_id, tf_document in enumerate(all_tf_documents):
+            for word, tf_val in tf_document.items():
+                writer.writerow([doc_id, word, tf_val])
+        
+        # Membuat response dengan CSV
+        response = make_response(output.getvalue())
+        response.headers["Content-Disposition"] = "attachment; filename=tf_results.csv"
+        response.headers["Content-type"] = "text/csv"
+        
+        return response
+    
+    except Exception as e:
+        return jsonify({'error': f'An error occurred during TF export: {str(e)}'}), 500
+    
+@app.route('/export-idf', methods=['POST'])
+def export_idf():
+    try:
+        all_tweets = TweetTraining.query.all()
+        documents = [tweet.processed_text for tweet in all_tweets]
+        
+        idf_values = calculate_idf(documents)
+        
+        output = io.StringIO()
+        writer = csv.writer(output)
+        
+        header = ["word", "idf"]
+        writer.writerow(header)
+        
+        for word, idf_val in idf_values.items():
+            writer.writerow([word, idf_val])
+        
+        response = make_response(output.getvalue())
+        response.headers["Content-Disposition"] = "attachment; filename=idf_results.csv"
+        response.headers["Content-type"] = "text/csv"
+        
+        return response
+    
+    except Exception as e:
+        return jsonify({'error': f'An error occurred during IDF export: {str(e)}'}), 500
+    
+@app.route('/export-tfidf', methods=['POST'])
+def export_tfidf():
+    try:
+        all_tweets = TweetTraining.query.all()
+        documents = [tweet.processed_text for tweet in all_tweets]
+        
+        tfidf_documents, word_index = calculate_tfidf(documents)
+        
+        output = io.StringIO()
+        writer = csv.writer(output)
+        
+        header = ["document_id"] + list(word_index.keys())
+        writer.writerow(header)
+        
+        for doc_id, (document, tfidf_document) in enumerate(tfidf_documents):
+            row = [doc_id] + list(tfidf_document)
+            writer.writerow(row)
+        
+        response = make_response(output.getvalue())
+        response.headers["Content-Disposition"] = "attachment; filename=tfidf_results.csv"
+        response.headers["Content-type"] = "text/csv"
+        
+        return response
+    
+    except Exception as e:
+        return jsonify({'error': f'An error occurred during TF-IDF export: {str(e)}'}), 500
+
 def predict_sentiment_knn(all_tweets, tfidf_documents, k):
-    sentiments = {}
+    sentiments = []
     
     for idx, tweet in enumerate(all_tweets):
         if tweet.username.lower() in ignored_usernames:
@@ -502,7 +633,6 @@ def predict_sentiment_knn(all_tweets, tfidf_documents, k):
         for i, other_tweet in enumerate(all_tweets):
             if i == idx or other_tweet.username.lower() in ignored_usernames:
                 continue
-            # Perbaiki ini
             distance = euclidean_distance(tfidf_documents[idx], tfidf_documents[i])
             distances.append((i, distance))
         
@@ -516,22 +646,9 @@ def predict_sentiment_knn(all_tweets, tfidf_documents, k):
         # Tentukan mayoritas sentimen dari tetangga
         majority_sentiment = Counter(neighbor_sentiments).most_common(1)[0][0]
         
-        # Ubah nilai sentimen berdasarkan kriteria baru
-        if majority_sentiment >= 0.05:
-            majority_sentiment = 1  # Positif
-        elif majority_sentiment <= -0.05:
-            majority_sentiment = -1  # Negatif
-        else:
-            majority_sentiment = 0  # Netral
-        
-        sentiments[idx] = majority_sentiment
+        sentiments.append(majority_sentiment)
     
-    # Hitung jumlah tweet yang diprediksi sebagai positif, negatif, dan netral
-    positive_count = list(sentiments.values()).count(1)
-    negative_count = list(sentiments.values()).count(-1)
-    neutral_count = list(sentiments.values()).count(0)
-    
-    return positive_count, negative_count, neutral_count
+    return sentiments
 
 @app.route('/predict-sentiment', methods=['POST'])
 def predict_sentiment_using_knn():
@@ -539,13 +656,14 @@ def predict_sentiment_using_knn():
         all_tweets = TweetTraining.query.all()
         documents = [tweet.processed_text for tweet in all_tweets]
         
-        # TF-IDF
-        # tfidf_vectorizer = TfidfVectorizer()
-        # tfidf_matrix = tfidf_vectorizer.fit_transform(documents)
-        
         tfidf_documents = calculate_tfidf(documents)
         
-        positive_count, negative_count, neutral_count = predict_sentiment_knn(all_tweets, tfidf_documents, k=9)
+        predicted_sentiments = predict_sentiment_knn(all_tweets, tfidf_documents, k=1)
+        
+        # Hitung jumlah tweet yang diprediksi sebagai positif, negatif, dan netral
+        positive_count = predicted_sentiments.count(1)
+        negative_count = predicted_sentiments.count(-1)
+        neutral_count = predicted_sentiments.count(0)
         
         return jsonify({'positive_count': positive_count, 'negative_count': negative_count, 'neutral_count': neutral_count}), 200
     except Exception as e:
@@ -557,45 +675,18 @@ def predict_sentiment_using_knn_testing():
         all_tweets = TweetTesting.query.all()
         documents = [tweet.processed_text for tweet in all_tweets]
         
-        # TF-IDF
-        # tfidf_vectorizer = TfidfVectorizer()
-        # tfidf_matrix = tfidf_vectorizer.fit_transform(documents)
-        
         tfidf_documents = calculate_tfidf(documents)
         
-        positive_count, negative_count, neutral_count = predict_sentiment_knn(all_tweets, tfidf_documents, k=4)
+        predicted_sentiments = predict_sentiment_knn(all_tweets, tfidf_documents, k=1)
+        
+        # Hitung jumlah tweet yang diprediksi sebagai positif, negatif, dan netral
+        positive_count = predicted_sentiments.count(1)
+        negative_count = predicted_sentiments.count(-1)
+        neutral_count = predicted_sentiments.count(0)
         
         return jsonify({'positive_count': positive_count, 'negative_count': negative_count, 'neutral_count': neutral_count}), 200
     except Exception as e:
         return jsonify({'error': 'An error occurred during sentiment prediction using KNN: {}'.format(str(e))}), 500
-    
-# def calculate_precision_recall_f1_score(actual_sentiments, predicted_sentiments):
-#     labels = [-1, 0, 1]
-#     confusion_mat = [[0, 0, 0], [0, 0, 0], [0, 0, 0]]  # Inisialisasi confusion matrix
-    
-#     for actual, predicted in zip(actual_sentiments, predicted_sentiments):
-#         if actual in labels and predicted in labels:
-#             confusion_mat[labels.index(actual)][labels.index(predicted)] += 1
-    
-#     precision = {}
-#     recall = {}
-#     f1_score = {}
-
-#     for label in range(len(labels)):
-#         tp = confusion_mat[label][label]
-#         fp = sum(confusion_mat[label]) - tp
-#         fn = sum(confusion_mat[i][label] for i in range(len(labels))) - tp
-
-#         precision[label] = tp / (tp + fp) if (tp + fp) > 0 else 0
-#         recall[label] = tp / (tp + fn) if (tp + fn) > 0 else 0
-#         f1_score[label] = (2 * precision[label] * recall[label]) / (precision[label] + recall[label]) if (precision[label] + recall[label]) > 0 else 0
-
-#     # Menghitung nilai rata-rata dari precision, recall, dan f1_score
-#     precision_avg = sum(precision.values()) / len(labels)
-#     recall_avg = sum(recall.values()) / len(labels)
-#     f1_score_avg = sum(f1_score.values()) / len(labels)
-
-#     return precision_avg, recall_avg, f1_score_avg
     
 @app.route('/calculate-accuracy', methods=['POST'])
 def calculate_accuracy():
@@ -606,16 +697,10 @@ def calculate_accuracy():
         tfidf_documents = calculate_tfidf(documents)
         
         # Prediksi sentimen menggunakan KNN
-        positive_count, negative_count, neutral_count = predict_sentiment_knn(all_tweets, tfidf_documents, k=9)
+        predicted_sentiments = predict_sentiment_knn(all_tweets, tfidf_documents, k=1)
         
         # Ambil sentimen aktual
         actual_sentiments = [tweet.sentiment for tweet in all_tweets]
-        
-        # Ubah nilai sentimen aktual berdasarkan kriteria baru
-        actual_sentiments = [1 if sentiment >= 0.05 else -1 if sentiment <= -0.05 else 0 for sentiment in actual_sentiments]
-        
-        # Buat list sentimen prediksi berdasarkan mayoritas sentimen yang dihasilkan oleh KNN
-        predicted_sentiments = [1] * positive_count + [-1] * negative_count + [0] * neutral_count
         
         # Hitung confusion matrix
         confusion_mat = [[0, 0, 0], [0, 0, 0], [0, 0, 0]]  # Inisialisasi confusion matrix
@@ -642,13 +727,69 @@ def calculate_accuracy():
                     confusion_mat[2][1] += 1
                 else:
                     confusion_mat[2][2] += 1
-                    
-        # Hitung metrik evaluasi
-        precision, recall, f1_score, _ = precision_recall_fscore_support(actual_sentiments, predicted_sentiments, labels=[-1, 0, 1], average='weighted')
         
-        precision_percent = precision * 100
-        recall_percent = recall * 100
-        f1_score_percent = f1_score * 100
+        # Menghitung Evaluation Metrics Negatif
+        true_neg = confusion_mat[0][0]
+        false_pos_neg = confusion_mat[1][0] + confusion_mat[2][0]
+        precision_neg = true_neg / (true_neg + false_pos_neg) if (true_neg + false_pos_neg) > 0 else 0
+        recall_neg = true_neg / (true_neg + confusion_mat[0][1] + confusion_mat[0][2]) if (true_neg + confusion_mat[0][1] + confusion_mat[0][2]) > 0 else 0
+        f1_score_neg = 2 * (precision_neg * recall_neg) / (precision_neg + recall_neg) if (precision_neg + recall_neg) > 0 else 0
+        
+        # Menghitung Evaluation Metrics Netral
+        true_neu = confusion_mat[1][1]
+        false_pos_neu = confusion_mat[0][1] + confusion_mat[2][1]
+        precision_neu = true_neu / (true_neu + false_pos_neu) if (true_neu + false_pos_neu) > 0 else 0
+        recall_neu = true_neu / (true_neu + confusion_mat[1][0] + confusion_mat[1][2]) if (true_neu + confusion_mat[1][0] + confusion_mat[1][2]) > 0 else 0
+        f1_score_neu = 2 * (precision_neu * recall_neu) / (precision_neu + recall_neu) if (precision_neu + recall_neu) > 0 else 0
+        
+        # Menghitung Evaluation Metrics Positif
+        true_pos = confusion_mat[2][2]
+        false_pos_pos = confusion_mat[0][2] + confusion_mat[1][2]
+        precision_pos = true_pos / (true_pos + false_pos_pos) if (true_pos + false_pos_pos) > 0 else 0
+        recall_pos = true_pos / (true_pos + confusion_mat[2][0] + confusion_mat[2][1]) if (true_pos + confusion_mat[2][0] + confusion_mat[2][1]) > 0 else 0
+        f1_score_pos = 2 * (precision_pos * recall_pos) / (precision_pos + recall_pos) if (precision_pos + recall_pos) > 0 else 0
+        
+        num_true_neg = true_neg
+        num_true_neu = true_neu
+        num_true_pos = true_pos
+        
+        total_true = num_true_neg + num_true_neu + num_true_pos
+        
+        # Hitung Precision Weighted
+        weighted_precision = (
+            (precision_neg * num_true_neg) +
+            (precision_neu * num_true_neu) +
+            (precision_pos * num_true_pos)
+        ) / total_true if total_true > 0 else 0
+        
+        weighted_precision_percent = weighted_precision * 100
+        
+        # print(confusion_mat[2][1])
+        # print(precision_neg)
+        # print(num_true_neg)
+        # print(precision_neu)
+        # print(num_true_neu)
+        # print(precision_pos)
+        # print(num_true_pos)
+        # print(total_true)
+        
+        # Hitung Recall Weighted
+        weighted_recall = (
+            (recall_neg * num_true_neg) +
+            (recall_neu * num_true_neu) +
+            (recall_pos * num_true_pos)
+        ) / total_true if total_true > 0 else 0
+        
+        weighted_recall_percent = weighted_recall * 100
+        
+        # Hitung F1 Score Weighted
+        weighted_f1_score = (
+            (f1_score_neg * num_true_neg) +
+            (f1_score_neu * num_true_neu) +
+            (f1_score_pos * num_true_pos)
+        ) / total_true if total_true > 0 else 0
+        
+        weighted_f1_score_percent = weighted_f1_score * 100
         
         # Hitung akurasi
         correct_predictions = sum(1 for actual, predicted in zip(actual_sentiments, predicted_sentiments) if actual == predicted)
@@ -657,9 +798,9 @@ def calculate_accuracy():
         
         return jsonify({
             'confusion_matrix': confusion_mat,
-            'precision': precision_percent,
-            'recall': recall_percent,
-            'f1_score': f1_score_percent,
+            'precision': weighted_precision_percent,
+            'recall': weighted_recall_percent,
+            'f1_score': weighted_f1_score_percent,
             'accuracy': accuracy
         }), 200
     except Exception as e:
@@ -674,16 +815,10 @@ def calculate_accuracy_testing():
         tfidf_documents = calculate_tfidf(documents)
         
         # Prediksi sentimen menggunakan KNN
-        positive_count, negative_count, neutral_count = predict_sentiment_knn(all_tweets, tfidf_documents, k=4)
+        predicted_sentiments = predict_sentiment_knn(all_tweets, tfidf_documents, k=1)
         
         # Ambil sentimen aktual
         actual_sentiments = [tweet.sentiment for tweet in all_tweets]
-        
-        # Ubah nilai sentimen aktual berdasarkan kriteria baru
-        actual_sentiments = [1 if sentiment >= 0.05 else -1 if sentiment <= -0.05 else 0 for sentiment in actual_sentiments]
-        
-        # Buat list sentimen prediksi berdasarkan mayoritas sentimen yang dihasilkan oleh KNN
-        predicted_sentiments = [1] * positive_count + [-1] * negative_count + [0] * neutral_count
         
         # Hitung metrik evaluasi
         confusion_mat = [[0, 0, 0], [0, 0, 0], [0, 0, 0]]  # Inisialisasi confusion matrix
@@ -711,11 +846,59 @@ def calculate_accuracy_testing():
                 else:
                     confusion_mat[2][2] += 1
         
-        precision, recall, f1_score, _ = precision_recall_fscore_support(actual_sentiments, predicted_sentiments, labels=[-1, 0, 1], average='weighted')
+        # Menghitung Evaluation Metrics Negatif
+        true_neg = confusion_mat[0][0]
+        false_pos_neg = confusion_mat[1][0] + confusion_mat[2][0]
+        precision_neg = true_neg / (true_neg + false_pos_neg) if (true_neg + false_pos_neg) > 0 else 0
+        recall_neg = true_neg / (true_neg + confusion_mat[0][1] + confusion_mat[0][2]) if (true_neg + confusion_mat[0][1] + confusion_mat[0][2]) > 0 else 0
+        f1_score_neg = 2 * (precision_neg * recall_neg) / (precision_neg + recall_neg) if (precision_neg + recall_neg) > 0 else 0
         
-        precision_percent = precision * 100
-        recall_percent = recall * 100
-        f1_score_percent = f1_score * 100
+        # Menghitung Evaluation Metrics Netral
+        true_neu = confusion_mat[1][1]
+        false_pos_neu = confusion_mat[0][1] + confusion_mat[2][1]
+        precision_neu = true_neu / (true_neu + false_pos_neu) if (true_neu + false_pos_neu) > 0 else 0
+        recall_neu = true_neu / (true_neu + confusion_mat[1][0] + confusion_mat[1][2]) if (true_neu + confusion_mat[1][0] + confusion_mat[1][2]) > 0 else 0
+        f1_score_neu = 2 * (precision_neu * recall_neu) / (precision_neu + recall_neu) if (precision_neu + recall_neu) > 0 else 0
+        
+        # Menghitung Evaluation Metrics Positif
+        true_pos = confusion_mat[2][2]
+        false_pos_pos = confusion_mat[0][2] + confusion_mat[1][2]
+        precision_pos = true_pos / (true_pos + false_pos_pos) if (true_pos + false_pos_pos) > 0 else 0
+        recall_pos = true_pos / (true_pos + confusion_mat[2][0] + confusion_mat[2][1]) if (true_pos + confusion_mat[2][0] + confusion_mat[2][1]) > 0 else 0
+        f1_score_pos = 2 * (precision_pos * recall_pos) / (precision_pos + recall_pos) if (precision_pos + recall_pos) > 0 else 0
+        
+        num_true_neg = true_neg
+        num_true_neu = true_neu
+        num_true_pos = true_pos
+        
+        total_true = num_true_neg + num_true_neu + num_true_pos
+        
+        # Hitung Precision Weighted
+        weighted_precision = (
+            (precision_neg * num_true_neg) +
+            (precision_neu * num_true_neu) +
+            (precision_pos * num_true_pos)
+        ) / total_true if total_true > 0 else 0
+        
+        weighted_precision_percent = weighted_precision * 100
+        
+        # Hitung Recall Weighted
+        weighted_recall = (
+            (recall_neg * num_true_neg) +
+            (recall_neu * num_true_neu) +
+            (recall_pos * num_true_pos)
+        ) / total_true if total_true > 0 else 0
+        
+        weighted_recall_percent = weighted_recall * 100
+        
+        # Hitung F1 Score Weighted
+        weighted_f1_score = (
+            (f1_score_neg * num_true_neg) +
+            (f1_score_neu * num_true_neu) +
+            (f1_score_pos * num_true_pos)
+        ) / total_true if total_true > 0 else 0
+        
+        weighted_f1_score_percent = weighted_f1_score * 100
         
         # Hitung akurasi
         correct_predictions = sum(1 for actual, predicted in zip(actual_sentiments, predicted_sentiments) if actual == predicted)
@@ -724,9 +907,9 @@ def calculate_accuracy_testing():
         
         return jsonify({
             'confusion_matrix': confusion_mat,
-            'precision': precision_percent,
-            'recall': recall_percent,
-            'f1_score': f1_score_percent,
+            'precision': weighted_precision_percent,
+            'recall': weighted_recall_percent,
+            'f1_score': weighted_f1_score_percent,
             'accuracy': accuracy
         }), 200
     except Exception as e:

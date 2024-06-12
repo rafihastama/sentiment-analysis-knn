@@ -1,11 +1,11 @@
 /* eslint-disable no-unused-vars */
-import React from 'react';
+import React from 'react'
 import {
   MDBFooter,
   MDBContainer,
   MDBIcon,
   MDBBtn
-} from 'mdb-react-ui-kit';
+} from 'mdb-react-ui-kit'
 
 function Footer() {
   return (
@@ -55,7 +55,7 @@ function Footer() {
         <span className="text-white"> Lucius</span>
       </div>
     </MDBFooter>
-  );
+  )
 }
 
 export default Footer

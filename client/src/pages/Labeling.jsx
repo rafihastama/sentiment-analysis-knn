@@ -1,29 +1,33 @@
 /* eslint-disable no-unused-vars */
-import React, { useState, useEffect } from "react";
-import TableLabeling from "../components/TableLabeling";
-import { Button, message } from "antd";
-import { ExportOutlined } from "@ant-design/icons";
-import { DeliveredProcedureOutlined } from "@ant-design/icons";
-import axios from "axios";
+import React, { useState, useEffect } from "react"
+import TableLabeling from "../components/TableLabeling"
+import { Button, message } from "antd"
+import { ExportOutlined } from "@ant-design/icons"
+import { DeliveredProcedureOutlined } from "@ant-design/icons"
+import axios from "axios"
 
 const Labeling = () => {
-  const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [data, setData] = useState([])
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    getData();
-  }, []);
+    getData()
+  }, [])
 
   const getData = async () => {
     try {
-      const response = await axios.get("http://localhost:5000/get-processed-data");
-      setData(response.data);
+      const response = await axios.get("http://localhost:5000/get-processed-data")
+      setData(response.data)
     } catch (error) {
-      console.error("Error fetching data:", error);
+      console.error("Error fetching data:", error)
     }
-  };
+  }
 
   const exportData = async () => {
+    if (data.length === 0) {
+      message.error("Data is empty!")
+      return
+    }
     try {
       const response = await axios.post(
         "http://localhost:5000/export-data",
@@ -44,20 +48,23 @@ const Labeling = () => {
 
   const labelSentimentAutomatically = async () => {
     try {
-      setLoading(true);
+      setLoading(true)
       const response = await axios.post(
         "http://localhost:5000/label-sentiment-automatically"
-      );
-      console.log(response.data.message);
-      message.success("Sentiment labeled automatically!");
-      getData();
+      )
+      if ((response.status === 200) && (data != 0)) {
+        await getData()
+        message.success("Sentiment labeled automatically!")
+      } else {
+        message.error("Data is empty!")
+      }
     } catch (error) {
-      console.error("Error labeling sentiment automatically:", error);
-      message.error("Failed to label sentiment automatically!");
+      console.error("Error labeling sentiment automatically:", error)
+      message.error("Failed to label sentiment automatically!")
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   return (
     <div>
@@ -80,7 +87,7 @@ const Labeling = () => {
       </Button>
       <TableLabeling data={data} itemsPerPage={12} title={"Labeling"} />
     </div>
-  );
-};
+  )
+}
 
-export default Labeling;
+export default Labeling

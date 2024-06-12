@@ -1,18 +1,18 @@
 /* eslint-disable no-unused-vars */
 /* eslint-disable react/prop-types */
-import React from "react";
-import classNames from "classnames";
-import { Container } from "reactstrap";
-import { Route, Routes } from "react-router-dom";
+import React from "react"
+import classNames from "classnames"
+import { Container } from "reactstrap"
+import { Route, Routes } from "react-router-dom"
 
-import Topbar from "../components/Topbar";
-import ImportData from "../pages/ImportData";
-import Preprocessing from "../pages/Preprocessing";
-import Labeling from "../pages/Labeling";
-import Analysis from "../pages/Analysis";
-import SplitData from "../pages/SplitData";
-import Modeling from "../pages/Modeling";
-import Evaluate from "../pages/Evaluate";
+import Topbar from "../components/Topbar"
+import ImportData from "../pages/ImportData"
+import Preprocessing from "../pages/Preprocessing"
+import Labeling from "../pages/Labeling"
+import Analysis from "../pages/Analysis"
+import SplitData from "../pages/SplitData"
+import Modeling from "../pages/Modeling"
+import Evaluate from "../pages/Evaluate"
 
 function Content({ sidebarIsOpen, toggleSidebar }) {
     return (
@@ -31,7 +31,7 @@ function Content({ sidebarIsOpen, toggleSidebar }) {
           <Route path="/evaluate" element={<Evaluate />} />
         </Routes>
       </Container>
-    );
+    )
 }
 
-export default Content;
+export default Content

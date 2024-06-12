@@ -1,6 +1,6 @@
 /* eslint-disable no-unused-vars */
 /* eslint-disable react/prop-types */
-import React from "react";
+import React from "react"
 import {
   ImportOutlined,
   ProfileFilled,
@@ -9,18 +9,18 @@ import {
   FileDoneOutlined,
   FileTextOutlined,
   FileSyncOutlined,
-} from "@ant-design/icons";
-import { Nav } from "reactstrap";
-import classNames from "classnames";
+} from "@ant-design/icons"
+import { Nav } from "reactstrap"
+import classNames from "classnames"
 
-import SubMenu from "./SubMenu";
+import SubMenu from "./SubMenu"
 
 function SideBar({ isOpen, toggle }) {
   return (
     <div className={classNames("sidebar", { "is-open": isOpen })}>
       <div className="sidebar-header">
         <span color="info" onClick={toggle} style={{ color: "#fff" }}>
-          &times;
+          &times
         </span>
         <h3>K-Nearest Neighbor</h3>
         <hr></hr>
@@ -31,7 +31,7 @@ function SideBar({ isOpen, toggle }) {
         </Nav>
       </div>
     </div>
-  );
+  )
 }
 
 const submenus = [
@@ -72,6 +72,6 @@ const submenus = [
       icon: <FileDoneOutlined />,
     },
   ],
-];
+]
 
-export default SideBar;
+export default SideBar

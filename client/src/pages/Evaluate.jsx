@@ -23,7 +23,7 @@ const Evaluate = () => {
       message.success("Accuracy calculated!");
     } catch (error) {
       console.error("Error calculating accuracy!", error);
-      message.error("Error calculating accuracy!");
+      message.error("Data is empty!");
     } finally {
       setLoading(false);
     }

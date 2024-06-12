@@ -1,12 +1,12 @@
 /* eslint-disable no-unused-vars */
 /* eslint-disable react/prop-types */
-import React from "react";
-import { NavItem, NavLink } from "reactstrap";
-import { Link, useLocation } from "react-router-dom";
+import React from "react"
+import { NavItem, NavLink } from "reactstrap"
+import { Link, useLocation } from "react-router-dom"
 
 const SubMenu = (props) => {
-  const { items } = props;
-  const location = useLocation();
+  const { items } = props
+  const location = useLocation()
 
   return (
     <div>
@@ -24,7 +24,7 @@ const SubMenu = (props) => {
         </NavItem>
       ))}
     </div>
-  );
-};
+  )
+}
 
-export default SubMenu;
+export default SubMenu

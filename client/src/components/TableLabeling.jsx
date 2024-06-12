@@ -44,7 +44,7 @@ function TableLabeling({ data, itemsPerPage, title }) {
         }
       };
       fetchSentiments()
-    }, []);
+    }, [data]);
 
     const handleClick = (e, index) => {
         e.preventDefault();

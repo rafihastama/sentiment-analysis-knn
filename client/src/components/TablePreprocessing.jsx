@@ -9,7 +9,7 @@ import { Table, Pagination, PaginationItem, PaginationLink, Card,
   Col,
 } from 'reactstrap';
 
-function TablePreprocessingTrain({ data, itemsPerPage, title }) {
+function TablePreprocessing({ data, itemsPerPage, title }) {
     const [currentPage, setCurrentPage] = useState(0);
     const totalData = data.length;
     const totalPages = Math.ceil(totalData / itemsPerPage);
@@ -129,4 +129,4 @@ function TablePreprocessingTrain({ data, itemsPerPage, title }) {
     );
 }
 
-export default TablePreprocessingTrain;
+export default TablePreprocessing;

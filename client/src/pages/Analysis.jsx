@@ -1,84 +1,84 @@
 /* eslint-disable no-unused-vars */
-import React, { useEffect, useState } from "react";
-import { Card, CardHeader, CardBody, CardTitle, Row, Col } from "reactstrap";
-import { PieChart } from "@mui/x-charts/PieChart";
-import ReactWordcloud from "react-wordcloud";
-import axios from "axios";
+import React, { useEffect, useState } from "react"
+import { Card, CardHeader, CardBody, CardTitle, Row, Col } from "reactstrap"
+import { PieChart } from "@mui/x-charts/PieChart"
+import ReactWordcloud from "react-wordcloud"
+import axios from "axios"
 
 function Analysis() {
-  const [sentimentDataTraining, setSentimentDataTraining] = useState([]);
-  const [sentimentDataTesting, setSentimentDataTesting] = useState([]);
-  const [wordcloudData, setWordCloudData] = useState([]);
-  const [wordcloudDataTesting, setWordCloudDataTesting] = useState([]);
+  const [sentimentDataTraining, setSentimentDataTraining] = useState([])
+  const [sentimentDataTesting, setSentimentDataTesting] = useState([])
+  const [wordcloudData, setWordCloudData] = useState([])
+  const [wordcloudDataTesting, setWordCloudDataTesting] = useState([])
 
   useEffect(() => {
-    fetchSentimentData();
-    fetchWordCloudData();
-    fetchSentimentDataTesting();
-    fetchWordCloudDataTesting();
-  }, []);
+    fetchSentimentData()
+    fetchWordCloudData()
+    fetchSentimentDataTesting()
+    fetchWordCloudDataTesting()
+  }, [])
 
   const fetchSentimentData = async () => {
     try {
       const response = await axios.get(
         "http://localhost:5000/get-sentiment-comparison"
-      );
-      setSentimentDataTraining(response.data);
+      )
+      setSentimentDataTraining(response.data)
     } catch (error) {
-      console.error("Error fetching sentiment data:", error);
+      console.error("Error fetching sentiment data:", error)
     }
-  };
+  }
 
   const fetchWordCloudData = async () => {
     try {
       const response = await axios.get(
         "http://localhost:5000/get-wordcloud-data"
-      );
-      setWordCloudData(response.data);
+      )
+      setWordCloudData(response.data)
     } catch (error) {
-      console.error("Error fetching word cloud data:", error);
+      console.error("Error fetching word cloud data:", error)
     }
-  };
+  }
 
   const fetchSentimentDataTesting = async () => {
     try {
       const response = await axios.get(
         "http://localhost:5000/get-sentiment-comparison-testing"
-      );
-      setSentimentDataTesting(response.data);
+      )
+      setSentimentDataTesting(response.data)
     } catch (error) {
-      console.error("Error fetching sentiment data:", error);
+      console.error("Error fetching sentiment data:", error)
     }
-  };
+  }
 
   const fetchWordCloudDataTesting = async () => {
     try {
       const response = await axios.get(
         "http://localhost:5000/get-wordcloud-data-testing"
-      );
-      setWordCloudDataTesting(response.data);
+      )
+      setWordCloudDataTesting(response.data)
     } catch (error) {
-      console.error("Error fetching word cloud data:", error);
+      console.error("Error fetching word cloud data:", error)
     }
-  };
+  }
 
     // const countSentiments = () => {
-    //   let positiveCount = 0;
-    //   let negativeCount = 0;
-    //   let neutralCount = 0;
+    //   let positiveCount = 0
+    //   let negativeCount = 0
+    //   let neutralCount = 0
     //   sentimentDataTraining.forEach((item) => {
     //     if (item.label === "Positif") {
-    //       positiveCount += item.value;
+    //       positiveCount += item.value
     //     } else if (item.label === "Negatif") {
-    //       negativeCount += item.value;
+    //       negativeCount += item.value
     //     } else {
-    //       neutralCount += item.value;
+    //       neutralCount += item.value
     //     }
-    //   });
-    //   return { positiveCount, negativeCount, neutralCount };
-    // };
+    //   })
+    //   return { positiveCount, negativeCount, neutralCount }
+    // }
 
-    // const { positiveCount, negativeCount, neutralCount } = countSentiments();
+    // const { positiveCount, negativeCount, neutralCount } = countSentiments()
 
   return (
     <>
@@ -258,7 +258,7 @@ function Analysis() {
         </Col>
       </Row>
     </>
-  );
+  )
 }
 
-export default Analysis;
+export default Analysis

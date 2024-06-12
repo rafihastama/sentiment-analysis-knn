@@ -1,19 +1,19 @@
 /* eslint-disable no-unused-vars */
 /* eslint-disable react/prop-types */
-import React, { useState } from "react";
-import { MenuFoldOutlined, MenuUnfoldOutlined } from "@ant-design/icons";
+import React, { useState } from "react"
+import { MenuFoldOutlined, MenuUnfoldOutlined } from "@ant-design/icons"
 import {
   Navbar,
   NavbarBrand,
-} from "reactstrap";
-import { Button } from "antd";
+} from "reactstrap"
+import { Button } from "antd"
 
 const Topbar = ({ toggleSidebar }) => {
-    const [sidebarIsOpen, setSidebarOpen] = useState(false);
+    const [sidebarIsOpen, setSidebarOpen] = useState(false)
 
     const handleToggleSidebar = () => {
-        setSidebarOpen(!sidebarIsOpen);
-        toggleSidebar();
+        setSidebarOpen(!sidebarIsOpen)
+        toggleSidebar()
     }
 
     return (
@@ -42,7 +42,7 @@ const Topbar = ({ toggleSidebar }) => {
           />
         </NavbarBrand>
       </Navbar>
-    );
+    )
 }
 
-export default Topbar;
+export default Topbar
