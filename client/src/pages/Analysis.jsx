@@ -62,23 +62,35 @@ function Analysis() {
     }
   }
 
-    // const countSentiments = () => {
-    //   let positiveCount = 0
-    //   let negativeCount = 0
-    //   let neutralCount = 0
-    //   sentimentDataTraining.forEach((item) => {
-    //     if (item.label === "Positif") {
-    //       positiveCount += item.value
-    //     } else if (item.label === "Negatif") {
-    //       negativeCount += item.value
-    //     } else {
-    //       neutralCount += item.value
-    //     }
-    //   })
-    //   return { positiveCount, negativeCount, neutralCount }
-    // }
+    const countSentiments = (data) => {
+      let positiveCount = 0
+      let negativeCount = 0
+      let neutralCount = 0
+      data.forEach((item) => {
+        if (item.label === "Positif") {
+          positiveCount += item.value
+        } else if (item.label === "Negatif") {
+          negativeCount += item.value
+        } else {
+          neutralCount += item.value
+        }
+      })
+      return { positiveCount, negativeCount, neutralCount }
+    }
 
-    // const { positiveCount, negativeCount, neutralCount } = countSentiments()
+    // Untuk sentimentDataTraining
+    const {
+      positiveCount: positiveCountTraining,
+      negativeCount: negativeCountTraining,
+      neutralCount: neutralCountTraining,
+    } = countSentiments(sentimentDataTraining)
+
+    // Untuk sentimentDataTesting
+    const {
+      positiveCount: positiveCountTesting,
+      negativeCount: negativeCountTesting,
+      neutralCount: neutralCountTesting,
+    } = countSentiments(sentimentDataTesting)
 
   return (
     <>
@@ -89,7 +101,7 @@ function Analysis() {
           </h1>
         </center>
         <Col sm="6">
-          <Card>
+          <Card style={{ height: "100%" }}>
             <CardHeader>
               <CardTitle tag="h4">Perbandingan Sentimen</CardTitle>
             </CardHeader>
@@ -101,17 +113,20 @@ function Analysis() {
                   },
                 ]}
                 width={460}
-                height={300}
+                height={350}
               />
-              {/* <p>{positiveCount}</p>
-              <p>{negativeCount}</p>
-              <p>{neutralCount}</p> */}
+              <hr></hr>
+              <center>
+                <p>Jumlah Netral = {neutralCountTraining}</p>
+                <p>Jumlah Positif = {positiveCountTraining}</p>
+                <p>Jumlah Negatif = {negativeCountTraining}</p>
+              </center>
             </CardBody>
           </Card>
         </Col>
 
         <Col sm="6">
-          <Card>
+          <Card style={{ height: "100%" }}>
             <CardHeader>
               <CardTitle tag="h4">Kata yang sering muncul</CardTitle>
             </CardHeader>
@@ -179,7 +194,7 @@ function Analysis() {
           </h1>
         </center>
         <Col sm="6">
-          <Card>
+          <Card style={{ height: "100%" }}>
             <CardHeader>
               <CardTitle tag="h4">Perbandingan Sentimen</CardTitle>
             </CardHeader>
@@ -191,14 +206,20 @@ function Analysis() {
                   },
                 ]}
                 width={460}
-                height={300}
+                height={350}
               />
+              <hr></hr>
+              <center>
+                <p>Jumlah Netral = {neutralCountTesting}</p>
+                <p>Jumlah Positif = {positiveCountTesting}</p>
+                <p>Jumlah Negatif = {negativeCountTesting}</p>
+              </center>
             </CardBody>
           </Card>
         </Col>
 
         <Col sm="6">
-          <Card>
+          <Card style={{ height: "100%" }}>
             <CardHeader>
               <CardTitle tag="h4">Kata yang sering muncul</CardTitle>
             </CardHeader>
@@ -258,7 +279,7 @@ function Analysis() {
         </Col>
       </Row>
     </>
-  )
+  );
 }
 
 export default Analysis

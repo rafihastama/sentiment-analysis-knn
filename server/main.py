@@ -88,25 +88,6 @@ class TweetTesting(db.Model):
     formal_text = db.Column(db.String(500))
     stopword_removal = db.Column(db.String(500))
     
-@app.route('/import-csv', methods=['POST'])
-def import_csv():
-    file = request.files['file']
-    if file:
-        try:
-            stream = StringIO(file.stream.read().decode("UTF8"), newline=None)
-            csv_reader = csv.reader(stream)
-            next(csv_reader)
-            for row in csv_reader:
-                tweet = Tweet(created_at=row[0], full_text=row[2], username=row[10], tweet_url=row[11])
-                db.session.add(tweet)
-            db.session.commit()
-            return jsonify({'message': 'CSV imported successfully!'}), 200
-        except Exception as e:
-            db.session.rollback()
-            return jsonify({'error': str(e)}), 500
-    else:
-        return jsonify({'error': 'No file provided!'}), 400
-    
 @app.route('/import-excel', methods=['POST'])
 def import_excel():
     file = request.files['file']
@@ -342,7 +323,6 @@ def export_data():
 @app.route('/split-data', methods=['POST'])
 def split_data():
     try:
-        # Ambil semua data dari database
         all_tweets = ProcessedTweet.query.all()
         
         # Hitung jumlah data untuk masing-masing kategori sentimen
@@ -440,8 +420,8 @@ def get_sentiment_comparison_testing():
 def get_wordcloud_data():
     try:    
         tweets = TweetTraining.query.all()
-        positive_tweets = TweetTraining.query.filter(TweetTraining.sentiment == 1).all()  # Positif
-        negative_tweets = TweetTraining.query.filter(TweetTraining.sentiment == -1).all()  # Negatif
+        positive_tweets = TweetTraining.query.filter(TweetTraining.sentiment == 1).all()
+        negative_tweets = TweetTraining.query.filter(TweetTraining.sentiment == -1).all()
         
         all_text = ' '.join([tweet.processed_text for tweet in tweets])
         positive_words = ' '.join([tweet.processed_text for tweet in positive_tweets])
@@ -463,8 +443,8 @@ def get_wordcloud_data():
 def get_wordcloud_data_testing():
     try:    
         tweets = TweetTesting.query.all()
-        positive_tweets = TweetTesting.query.filter(TweetTesting.sentiment == 1).all()  # Positif
-        negative_tweets = TweetTesting.query.filter(TweetTesting.sentiment == -1).all()  # Negatif
+        positive_tweets = TweetTesting.query.filter(TweetTesting.sentiment == 1).all()
+        negative_tweets = TweetTesting.query.filter(TweetTesting.sentiment == -1).all()
         
         all_text = ' '.join([tweet.processed_text for tweet in tweets])
         positive_words = ' '.join([tweet.processed_text for tweet in positive_tweets])
@@ -731,70 +711,64 @@ def calculate_accuracy():
         # Menghitung Evaluation Metrics Negatif
         true_neg = confusion_mat[0][0]
         false_pos_neg = confusion_mat[1][0] + confusion_mat[2][0]
+        false_neg_neg = confusion_mat[0][1] + confusion_mat[0][2]
         precision_neg = true_neg / (true_neg + false_pos_neg) if (true_neg + false_pos_neg) > 0 else 0
-        recall_neg = true_neg / (true_neg + confusion_mat[0][1] + confusion_mat[0][2]) if (true_neg + confusion_mat[0][1] + confusion_mat[0][2]) > 0 else 0
+        recall_neg = true_neg / (true_neg + false_neg_neg) if (true_neg + false_neg_neg) > 0 else 0
         f1_score_neg = 2 * (precision_neg * recall_neg) / (precision_neg + recall_neg) if (precision_neg + recall_neg) > 0 else 0
         
         # Menghitung Evaluation Metrics Netral
         true_neu = confusion_mat[1][1]
         false_pos_neu = confusion_mat[0][1] + confusion_mat[2][1]
+        false_neg_neu = confusion_mat[1][0] + confusion_mat[1][2]
         precision_neu = true_neu / (true_neu + false_pos_neu) if (true_neu + false_pos_neu) > 0 else 0
-        recall_neu = true_neu / (true_neu + confusion_mat[1][0] + confusion_mat[1][2]) if (true_neu + confusion_mat[1][0] + confusion_mat[1][2]) > 0 else 0
+        recall_neu = true_neu / (true_neu + false_neg_neu) if (true_neu + false_neg_neu) > 0 else 0
         f1_score_neu = 2 * (precision_neu * recall_neu) / (precision_neu + recall_neu) if (precision_neu + recall_neu) > 0 else 0
         
         # Menghitung Evaluation Metrics Positif
         true_pos = confusion_mat[2][2]
         false_pos_pos = confusion_mat[0][2] + confusion_mat[1][2]
+        false_neg_pos = confusion_mat[2][0] + confusion_mat[2][1]
         precision_pos = true_pos / (true_pos + false_pos_pos) if (true_pos + false_pos_pos) > 0 else 0
-        recall_pos = true_pos / (true_pos + confusion_mat[2][0] + confusion_mat[2][1]) if (true_pos + confusion_mat[2][0] + confusion_mat[2][1]) > 0 else 0
+        recall_pos = true_pos / (true_pos + false_neg_pos) if (true_pos + false_neg_pos) > 0 else 0
         f1_score_pos = 2 * (precision_pos * recall_pos) / (precision_pos + recall_pos) if (precision_pos + recall_pos) > 0 else 0
         
-        num_true_neg = true_neg
-        num_true_neu = true_neu
-        num_true_pos = true_pos
+        # Menghitung jumlah prediksi untuk masing-masing kelas (dari prediksi)
+        total_pred_neg = sum(1 for predicted in predicted_sentiments if predicted == -1)
+        total_pred_neu = sum(1 for predicted in predicted_sentiments if predicted == 0)
+        total_pred_pos = sum(1 for predicted in predicted_sentiments if predicted == 1)
         
-        total_true = num_true_neg + num_true_neu + num_true_pos
+        total_pred = total_pred_neg + total_pred_neu + total_pred_pos
         
         # Hitung Precision Weighted
         weighted_precision = (
-            (precision_neg * num_true_neg) +
-            (precision_neu * num_true_neu) +
-            (precision_pos * num_true_pos)
-        ) / total_true if total_true > 0 else 0
+            (precision_neg * total_pred_neg) +
+            (precision_neu * total_pred_neu) +
+            (precision_pos * total_pred_pos)
+        ) / total_pred if (total_pred_neg + total_pred_neu + total_pred_pos) > 0 else 0
+        
+        total_pred = total_pred_neg + total_pred_neu + total_pred_pos
         
         weighted_precision_percent = weighted_precision * 100
         
-        # print(confusion_mat[2][1])
-        # print(precision_neg)
-        # print(num_true_neg)
-        # print(precision_neu)
-        # print(num_true_neu)
-        # print(precision_pos)
-        # print(num_true_pos)
-        # print(total_true)
-        
-        # Hitung Recall Weighted
         weighted_recall = (
-            (recall_neg * num_true_neg) +
-            (recall_neu * num_true_neu) +
-            (recall_pos * num_true_pos)
-        ) / total_true if total_true > 0 else 0
+            (recall_neg * total_pred_neg) +
+            (recall_neu * total_pred_neu) +
+            (recall_pos * total_pred_pos)
+        ) / total_pred if (total_pred_neg + total_pred_neu + total_pred_pos) > 0 else 0
         
         weighted_recall_percent = weighted_recall * 100
         
-        # Hitung F1 Score Weighted
         weighted_f1_score = (
-            (f1_score_neg * num_true_neg) +
-            (f1_score_neu * num_true_neu) +
-            (f1_score_pos * num_true_pos)
-        ) / total_true if total_true > 0 else 0
+            (f1_score_neg * total_pred_neg) +
+            (f1_score_neu * total_pred_neu) +
+            (f1_score_pos * total_pred_pos)
+        ) / total_pred if (total_pred_neg + total_pred_neu + total_pred_pos) > 0 else 0
         
         weighted_f1_score_percent = weighted_f1_score * 100
         
         # Hitung akurasi
         correct_predictions = sum(1 for actual, predicted in zip(actual_sentiments, predicted_sentiments) if actual == predicted)
-        total_predictions = len(actual_sentiments)
-        accuracy = correct_predictions / total_predictions * 100
+        accuracy = correct_predictions / total_pred * 100
         
         return jsonify({
             'confusion_matrix': confusion_mat,
@@ -849,54 +823,64 @@ def calculate_accuracy_testing():
         # Menghitung Evaluation Metrics Negatif
         true_neg = confusion_mat[0][0]
         false_pos_neg = confusion_mat[1][0] + confusion_mat[2][0]
+        false_neg_neg = confusion_mat[0][1] + confusion_mat[0][2]
         precision_neg = true_neg / (true_neg + false_pos_neg) if (true_neg + false_pos_neg) > 0 else 0
-        recall_neg = true_neg / (true_neg + confusion_mat[0][1] + confusion_mat[0][2]) if (true_neg + confusion_mat[0][1] + confusion_mat[0][2]) > 0 else 0
+        recall_neg = true_neg / (true_neg + false_neg_neg) if (true_neg + false_neg_neg) > 0 else 0
         f1_score_neg = 2 * (precision_neg * recall_neg) / (precision_neg + recall_neg) if (precision_neg + recall_neg) > 0 else 0
         
         # Menghitung Evaluation Metrics Netral
         true_neu = confusion_mat[1][1]
         false_pos_neu = confusion_mat[0][1] + confusion_mat[2][1]
+        false_neg_neu = confusion_mat[1][0] + confusion_mat[1][2]
         precision_neu = true_neu / (true_neu + false_pos_neu) if (true_neu + false_pos_neu) > 0 else 0
-        recall_neu = true_neu / (true_neu + confusion_mat[1][0] + confusion_mat[1][2]) if (true_neu + confusion_mat[1][0] + confusion_mat[1][2]) > 0 else 0
+        recall_neu = true_neu / (true_neu + false_neg_neu) if (true_neu + false_neg_neu) > 0 else 0
         f1_score_neu = 2 * (precision_neu * recall_neu) / (precision_neu + recall_neu) if (precision_neu + recall_neu) > 0 else 0
         
         # Menghitung Evaluation Metrics Positif
         true_pos = confusion_mat[2][2]
         false_pos_pos = confusion_mat[0][2] + confusion_mat[1][2]
+        false_neg_pos = confusion_mat[2][0] + confusion_mat[2][1]
         precision_pos = true_pos / (true_pos + false_pos_pos) if (true_pos + false_pos_pos) > 0 else 0
-        recall_pos = true_pos / (true_pos + confusion_mat[2][0] + confusion_mat[2][1]) if (true_pos + confusion_mat[2][0] + confusion_mat[2][1]) > 0 else 0
+        recall_pos = true_pos / (true_pos + false_neg_pos) if (true_pos + false_neg_pos) > 0 else 0
         f1_score_pos = 2 * (precision_pos * recall_pos) / (precision_pos + recall_pos) if (precision_pos + recall_pos) > 0 else 0
         
-        num_true_neg = true_neg
-        num_true_neu = true_neu
-        num_true_pos = true_pos
+        # Menghitung jumlah prediksi untuk masing-masing kelas (dari prediksi)
+        total_pred_neg = sum(1 for predicted in predicted_sentiments if predicted == -1)
+        total_pred_neu = sum(1 for predicted in predicted_sentiments if predicted == 0)
+        total_pred_pos = sum(1 for predicted in predicted_sentiments if predicted == 1)
         
-        total_true = num_true_neg + num_true_neu + num_true_pos
+        total_pred = total_pred_neg + total_pred_neu + total_pred_pos
+        
+        # print(f1_score_neg)
+        # print(total_pred_neg)
+        # print(f1_score_neu)
+        # print(total_pred_neu)
+        # print(f1_score_pos)
+        # print(total_pred_pos)
+        # print(total_pred)
         
         # Hitung Precision Weighted
         weighted_precision = (
-            (precision_neg * num_true_neg) +
-            (precision_neu * num_true_neu) +
-            (precision_pos * num_true_pos)
-        ) / total_true if total_true > 0 else 0
+            (precision_neg * total_pred_neg) +
+            (precision_neu * total_pred_neu) +
+            (precision_pos * total_pred_pos)
+        ) / total_pred if (total_pred_neg + total_pred_neu + total_pred_pos) > 0 else 0
         
         weighted_precision_percent = weighted_precision * 100
         
-        # Hitung Recall Weighted
         weighted_recall = (
-            (recall_neg * num_true_neg) +
-            (recall_neu * num_true_neu) +
-            (recall_pos * num_true_pos)
-        ) / total_true if total_true > 0 else 0
+            (recall_neg * total_pred_neg) +
+            (recall_neu * total_pred_neu) +
+            (recall_pos * total_pred_pos)
+        ) / total_pred if (total_pred_neg + total_pred_neu + total_pred_pos) > 0 else 0
         
         weighted_recall_percent = weighted_recall * 100
         
-        # Hitung F1 Score Weighted
         weighted_f1_score = (
-            (f1_score_neg * num_true_neg) +
-            (f1_score_neu * num_true_neu) +
-            (f1_score_pos * num_true_pos)
-        ) / total_true if total_true > 0 else 0
+            (f1_score_neg * total_pred_neg) +
+            (f1_score_neu * total_pred_neu) +
+            (f1_score_pos * total_pred_pos)
+        ) / total_pred if (total_pred_neg + total_pred_neu + total_pred_pos) > 0 else 0
         
         weighted_f1_score_percent = weighted_f1_score * 100
         

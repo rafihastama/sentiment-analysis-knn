@@ -104,12 +104,9 @@ const Modeling = () => {
 
   return (
     <div>
-      {(predictedSentimentTraining == null ||
-        predictedSentimentTesting == null) && (
-        <h2 style={{ color: "white" }} className="mb-3">
-          Modeling with KNN + TF-IDF
-        </h2>
-      )}
+      <h2 style={{ color: "white" }} className="mb-3">
+        Modeling with KNN + TF-IDF
+      </h2>
       <Button
         type="primary"
         className="mb-3"
@@ -120,40 +117,10 @@ const Modeling = () => {
         Process
       </Button>
 
-      <Button
-        type="primary"
-        className="mx-3"
-        icon={<FileSyncOutlined />}
-        loading={loading}
-        onClick={handleExport}
-      >
-        TF Result
-      </Button>
-
-      <Button
-        type="primary"
-        className=""
-        icon={<FileSyncOutlined />}
-        loading={loading}
-        onClick={handleExportIDF}
-      >
-        IDF Result
-      </Button>
-
-      <Button
-        type="primary"
-        className="mx-3"
-        icon={<FileSyncOutlined />}
-        loading={loading}
-        onClick={handleExportTFIDF}
-      >
-        TF-IDF Result
-      </Button>
-
       {predictedSentimentTraining !== null && (
         <Alert
           message="Predicted Sentiment With KNN Model (Training Data)"
-          description={`Positive Count: ${predictedSentimentTraining.positive_count} | Negative Count: ${predictedSentimentTraining.negative_count} | Neutral Count: ${predictedSentimentTraining.neutral_count}`}
+          description={`Positif Count: ${predictedSentimentTraining.positive_count} | Negatif Count: ${predictedSentimentTraining.negative_count} | Netral Count: ${predictedSentimentTraining.neutral_count}`}
           type="info"
           showIcon
         />
@@ -164,7 +131,7 @@ const Modeling = () => {
       {predictedSentimentTesting !== null && (
         <Alert
           message="Predicted Sentiment With KNN Model (Testing Data)"
-          description={`Positive Count: ${predictedSentimentTesting.positive_count} | Negative Count: ${predictedSentimentTesting.negative_count} | Neutral Count: ${predictedSentimentTesting.neutral_count}`}
+          description={`Positif Count: ${predictedSentimentTesting.positive_count} | Negatif Count: ${predictedSentimentTesting.negative_count} | Netral Count: ${predictedSentimentTesting.neutral_count}`}
           type="info"
           showIcon
         />
