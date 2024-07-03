@@ -300,26 +300,6 @@ def label_sentiment_automatically():
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
     
-@app.route('/export-data', methods=['POST'])
-def export_data():
-    try:
-        tweets = ProcessedTweet.query.all()
-        data = [
-            {'id': tweet.id, 'username': tweet.username, 'full_text': tweet.full_text, 'processed_text': tweet.processed_text, 'sentiment': tweet.sentiment, 'label_sentiment': 'Netral' if tweet.sentiment == 0 else 'Negatif' if tweet.sentiment == -1 else 'Positif' if tweet.sentiment == 1 else ''}
-            for tweet in tweets
-        ]
-        
-        output = io.StringIO()
-        writer = csv.DictWriter(output, fieldnames=['id', 'username', 'full_text', 'processed_text', 'sentiment','label_sentiment'])
-        writer.writeheader()
-        writer.writerows(data)
-        
-        csv_data_bytes = output.getvalue().encode('utf-8')
-        
-        return send_file(io.BytesIO(csv_data_bytes), as_attachment=True, download_name='exported_data.csv', mimetype='text/csv')
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-    
 @app.route('/split-data', methods=['POST'])
 def split_data():
     try:
@@ -492,7 +472,7 @@ def calculate_idf(documents):
     unique_words_set = set(word for document in documents for word in document.split())
     for word in unique_words_set:
         word_count = sum(word in document for document in documents)
-        idf[word] = math.log(total_documents / word_count)
+        idf[word] = math.log10(total_documents / word_count)
     # print("Hasil perhitungan IDF:")
     # for word, idf_val in idf.items():
     #     print(f"Kata: {word}, Nilai IDF: {idf_val}")
@@ -739,7 +719,6 @@ def calculate_accuracy():
         
         total_pred = total_pred_neg + total_pred_neu + total_pred_pos
         
-        # Hitung Precision Weighted
         weighted_precision = (
             (precision_neg * total_pred_neg) +
             (precision_neu * total_pred_neu) +
@@ -851,15 +830,6 @@ def calculate_accuracy_testing():
         
         total_pred = total_pred_neg + total_pred_neu + total_pred_pos
         
-        # print(f1_score_neg)
-        # print(total_pred_neg)
-        # print(f1_score_neu)
-        # print(total_pred_neu)
-        # print(f1_score_pos)
-        # print(total_pred_pos)
-        # print(total_pred)
-        
-        # Hitung Precision Weighted
         weighted_precision = (
             (precision_neg * total_pred_neg) +
             (precision_neu * total_pred_neu) +

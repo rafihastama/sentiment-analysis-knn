@@ -22,7 +22,7 @@ function SideBar({ isOpen, toggle }) {
         <span color="info" onClick={toggle} style={{ color: "#fff" }}>
           &times
         </span>
-        <h3>K-Nearest Neighbor</h3>
+        <h3>K-Nearest Neighbour</h3>
         <hr></hr>
       </div>
       <div className="side-menu">

@@ -35,6 +35,7 @@ const Topbar = ({ toggleSidebar }) => {
           <img
             alt="logo"
             src="/react.svg"
+            className="react-logo"
             style={{
               height: 40,
               width: 40,

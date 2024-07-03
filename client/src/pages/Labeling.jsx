@@ -23,29 +23,6 @@ const Labeling = () => {
     }
   }
 
-  const exportData = async () => {
-    if (data.length === 0) {
-      message.error("Data is empty!")
-      return
-    }
-    try {
-      const response = await axios.post(
-        "http://localhost:5000/export-data",
-        {},
-        { responseType: "blob" }
-      );
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute("download", "exported_data.csv");
-      document.body.appendChild(link);
-      link.click();
-      message.success("Data exported successfully!");
-    } catch (error) {
-      message.error("Failed to export data!");
-    }
-  };
-
   const labelSentimentAutomatically = async () => {
     try {
       setLoading(true)
@@ -70,15 +47,7 @@ const Labeling = () => {
     <div>
       <Button
         type="primary"
-        className="mb-3"
-        icon={<ExportOutlined />}
-        onClick={exportData}
-      >
-        Export Data
-      </Button>
-      <Button
-        type="primary"
-        className="mb-3 ml-3 mx-3"
+        className="mb-3 ml-3"
         icon={<DeliveredProcedureOutlined />}
         onClick={labelSentimentAutomatically}
         loading={loading}
