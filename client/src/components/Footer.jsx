@@ -52,7 +52,7 @@ function Footer() {
         style={{ backgroundColor: "rgba(0, 0, 0, 0.2)" }}
       >
         © 2024 Copyright:
-        <span className="text-white"> Lucius</span>
+        <span className="text-white"> Rafi Hastama</span>
       </div>
     </MDBFooter>
   )

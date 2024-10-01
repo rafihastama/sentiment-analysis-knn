@@ -40,12 +40,20 @@ const Evaluate = () => {
         <thead>
           <tr>
             <th
-              style={{ border: "1px solid black", padding: "8px" }}
+              style={{
+                border: "1px solid black",
+                padding: "8px",
+                fontSize: "30px",
+              }}
               colSpan="2"
               rowSpan="2"
             ></th>
             <th
-              style={{ border: "1px solid black", padding: "8px" }}
+              style={{
+                border: "1px solid black",
+                padding: "8px",
+                fontSize: "30px",
+              }}
               colSpan={3}
             >
               <center>Predicted</center>
@@ -55,7 +63,11 @@ const Evaluate = () => {
             {labels.map((label, index) => (
               <th
                 key={index}
-                style={{ border: "1px solid black", padding: "8px" }}
+                style={{
+                  border: "1px solid black",
+                  padding: "8px",
+                  fontSize: "30px",
+                }}
               >
                 <center>{label}</center>
               </th>
@@ -73,18 +85,29 @@ const Evaluate = () => {
                     padding: "8px",
                     textAlign: "center",
                     verticalAlign: "middle",
+                    fontSize: "30px",
                   }}
                 >
                   Actual
                 </th>
               )}
-              <th style={{ border: "1px solid black", padding: "8px" }}>
+              <th
+                style={{
+                  border: "1px solid black",
+                  padding: "8px",
+                  fontSize: "30px",
+                }}
+              >
                 <center>{labels[rowIndex]}</center>
               </th>
               {row.map((value, colIndex) => (
                 <td
                   key={colIndex}
-                  style={{ border: "1px solid black", padding: "8px" }}
+                  style={{
+                    border: "1px solid black",
+                    padding: "8px",
+                    fontSize: "30px",
+                  }}
                 >
                   <center>{value}</center>
                 </td>
@@ -93,7 +116,7 @@ const Evaluate = () => {
           ))}
         </tbody>
       </table>
-    )
+    );
   }
 
   return (

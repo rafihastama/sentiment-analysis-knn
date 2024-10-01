@@ -450,7 +450,6 @@ def calculate_tf(document):
     tf_document = {}
     words = document.split()
     
-    # Hitung frekuensi kemunculan setiap kata dalam dokumen
     word_counts = {}
     for word in words:
         word_counts[word] = word_counts.get(word, 0) + 1
@@ -486,7 +485,7 @@ def calculate_tfidf(documents):
     word_index = {word: idx for idx, word in enumerate(idf.keys())}
     
     for document in documents:
-        tfidf_document = np.zeros(len(idf))  # Inisialisasi vektor dengan nol
+        tfidf_document = np.zeros(len(idf))
         tf_document = calculate_tf(document)
         for word, tf_val in tf_document.items():
             if word in idf:  # Pastikan kata ada dalam idf
@@ -495,91 +494,6 @@ def calculate_tfidf(documents):
                 tfidf_document[word_index[word]] = tfidf_val  # Isi nilai TF-IDF
         tfidf_documents.append(tfidf_document)
     return tfidf_documents
-
-@app.route('/export-tf', methods=['POST'])
-def export_tf():
-    try:
-        all_tweets = TweetTraining.query.all()
-        documents = [tweet.processed_text for tweet in all_tweets]
-        
-        # Hitung TF untuk setiap dokumen
-        all_tf_documents = [calculate_tf(doc) for doc in documents]
-        
-        # Menyiapkan CSV
-        output = io.StringIO()
-        writer = csv.writer(output)
-        
-        # Tulis header
-        header = ["document_id", "word", "tf"]
-        writer.writerow(header)
-        
-        # Tulis setiap TF ke CSV
-        for doc_id, tf_document in enumerate(all_tf_documents):
-            for word, tf_val in tf_document.items():
-                writer.writerow([doc_id, word, tf_val])
-        
-        # Membuat response dengan CSV
-        response = make_response(output.getvalue())
-        response.headers["Content-Disposition"] = "attachment; filename=tf_results.csv"
-        response.headers["Content-type"] = "text/csv"
-        
-        return response
-    
-    except Exception as e:
-        return jsonify({'error': f'An error occurred during TF export: {str(e)}'}), 500
-    
-@app.route('/export-idf', methods=['POST'])
-def export_idf():
-    try:
-        all_tweets = TweetTraining.query.all()
-        documents = [tweet.processed_text for tweet in all_tweets]
-        
-        idf_values = calculate_idf(documents)
-        
-        output = io.StringIO()
-        writer = csv.writer(output)
-        
-        header = ["word", "idf"]
-        writer.writerow(header)
-        
-        for word, idf_val in idf_values.items():
-            writer.writerow([word, idf_val])
-        
-        response = make_response(output.getvalue())
-        response.headers["Content-Disposition"] = "attachment; filename=idf_results.csv"
-        response.headers["Content-type"] = "text/csv"
-        
-        return response
-    
-    except Exception as e:
-        return jsonify({'error': f'An error occurred during IDF export: {str(e)}'}), 500
-    
-@app.route('/export-tfidf', methods=['POST'])
-def export_tfidf():
-    try:
-        all_tweets = TweetTraining.query.all()
-        documents = [tweet.processed_text for tweet in all_tweets]
-        
-        tfidf_documents, word_index = calculate_tfidf(documents)
-        
-        output = io.StringIO()
-        writer = csv.writer(output)
-        
-        header = ["document_id"] + list(word_index.keys())
-        writer.writerow(header)
-        
-        for doc_id, (document, tfidf_document) in enumerate(tfidf_documents):
-            row = [doc_id] + list(tfidf_document)
-            writer.writerow(row)
-        
-        response = make_response(output.getvalue())
-        response.headers["Content-Disposition"] = "attachment; filename=tfidf_results.csv"
-        response.headers["Content-type"] = "text/csv"
-        
-        return response
-    
-    except Exception as e:
-        return jsonify({'error': f'An error occurred during TF-IDF export: {str(e)}'}), 500
 
 def predict_sentiment_knn(all_tweets, tfidf_documents, k):
     sentiments = []
